@@ -1,0 +1,83 @@
+import '../core/api_client.dart';
+
+class UserModel {
+  final int id;
+  final String username;
+  final String email;
+  final String phone;
+  final String? firstName;
+  final String? lastName;
+  final String role;
+  final int loyaltyPoints;
+  final double walletBalance;
+  final String? profilePicture;
+  final bool isAvailable;
+
+  // Rider specific
+  final String? bankName;
+  final String? bankAccountName;
+  final String? bankAccountNumber;
+  final double avgRating;
+  final int totalDeliveries;
+
+  UserModel({
+    required this.id,
+    required this.username,
+    required this.email,
+    required this.phone,
+    this.firstName,
+    this.lastName,
+    required this.role,
+    required this.loyaltyPoints,
+    this.walletBalance = 0.0,
+    this.profilePicture,
+    this.isAvailable = false,
+    this.bankName,
+    this.bankAccountName,
+    this.bankAccountNumber,
+    this.avgRating = 0.0,
+    this.totalDeliveries = 0,
+  });
+
+  factory UserModel.fromJson(Map<String, dynamic> json) {
+    String? photoUrl = json['profile_picture'];
+
+    if (photoUrl != null && photoUrl.startsWith('/')) {
+      final base = ApiClient.baseUrl.replaceAll('/api/v1/', '');
+      photoUrl = "$base$photoUrl";
+    }
+
+    return UserModel(
+      id: json['id'] ?? 0,
+      username: json['username'] ?? '',
+      email: json['email'] ?? '',
+      phone: json['phone'] ?? '',
+      firstName: json['first_name'],
+      lastName: json['last_name'],
+      role: json['role'] ?? 'customer',
+      loyaltyPoints: json['loyalty_points'] ?? 0,
+      walletBalance: double.tryParse(json['wallet_balance']?.toString() ?? '0.0') ?? 0.0,
+      profilePicture: photoUrl,
+      isAvailable: json['is_available'] ?? false,
+      bankName: json['bank_name'],
+      bankAccountName: json['bank_account_name'],
+      bankAccountNumber: json['bank_account_number'],
+      avgRating: double.tryParse(json['avg_rating']?.toString() ?? '0.0') ?? 0.0,
+      totalDeliveries: json['total_deliveries'] ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'first_name': firstName,
+      'last_name': lastName,
+      'phone': phone,
+      'is_available': isAvailable,
+      'bank_name': bankName,
+      'bank_account_name': bankAccountName,
+      'bank_account_number': bankAccountNumber,
+    };
+  }
+
+  String get fullName => "${firstName ?? ''} ${lastName ?? ''}".trim();
+}

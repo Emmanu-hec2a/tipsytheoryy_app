@@ -1,0 +1,58 @@
+import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+class ApiClient {
+  final Dio dio;
+  final FlutterSecureStorage storage = const FlutterSecureStorage();
+  
+  // Use 10.0.2.2 for Android Emulator to hit localhost
+  // Use localhost for iOS Simulator
+  // static const String baseUrl = 'https://tipsytheoryy.com/api/v1/';
+  // If 10.0.2.2 fails, try the actual machine IP or ensure Django is running on 0.0.0.0
+  static const String baseUrl = 'http://192.168.0.71:8000/api/v1/';
+
+  ApiClient() : dio = Dio(BaseOptions(
+    baseUrl: baseUrl,
+    connectTimeout: const Duration(seconds: 30),
+    receiveTimeout: const Duration(seconds: 30),
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+  )) {
+    dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) async {
+        final token = await storage.read(key: 'access_token');
+        if (token != null) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
+        return handler.next(options);
+      },
+      onError: (DioException e, handler) async {
+        if (e.response?.statusCode == 401) {
+          // Handle token refresh logic here if needed
+        }
+        return handler.next(e);
+      },
+    ));
+    
+    // Add logging in debug mode
+    dio.interceptors.add(LogInterceptor(responseBody: true, requestBody: true));
+  }
+
+  Future<Response> get(String path, {Map<String, dynamic>? queryParameters}) async {
+    return await dio.get(path, queryParameters: queryParameters);
+  }
+
+  Future<Response> post(String path, {dynamic data}) async {
+    return await dio.post(path, data: data);
+  }
+
+  Future<Response> patch(String path, {dynamic data}) async {
+    return await dio.patch(path, data: data);
+  }
+
+  Future<Response> delete(String path) async {
+    return await dio.delete(path);
+  }
+}

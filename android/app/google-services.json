@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "692162740094",
+    "project_id": "tipsytheoryy-dfe92",
+    "storage_bucket": "tipsytheoryy-dfe92.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:692162740094:android:fb2dd801123a64866c3d2f",
+        "android_client_info": {
+          "package_name": "com.tipsytheoryy.tipsytheoryy_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD6Dwv6qIwlEzjqfOY-mtIG5Mld6jo6M74"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

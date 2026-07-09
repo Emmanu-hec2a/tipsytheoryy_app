@@ -1,0 +1,516 @@
+import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:geolocator/geolocator.dart';
+import '../../core/theme.dart';
+import '../../providers/rider_provider.dart';
+import '../../models/order_model.dart';
+import 'delivery_complete_screen.dart';
+
+class ActiveDeliveryScreen extends StatefulWidget {
+  const ActiveDeliveryScreen({super.key});
+
+  @override
+  State<ActiveDeliveryScreen> createState() => _ActiveDeliveryScreenState();
+}
+
+class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
+  GoogleMapController? _mapController;
+  Position? _currentRiderPosition;
+  List<LatLng> _polylinePoints = [];
+  StreamSubscription<Position>? _positionStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _initRiderData();
+    _startPositionTracking();
+  }
+
+  @override
+  void dispose() {
+    _positionStream?.cancel();
+    super.dispose();
+  }
+
+  void _startPositionTracking() {
+    const locationSettings = LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 10,
+    );
+    _positionStream = Geolocator.getPositionStream(locationSettings: locationSettings).listen((Position position) {
+      if (mounted) {
+        setState(() => _currentRiderPosition = position);
+        _updateInAppNavigation(position);
+      }
+    });
+  }
+
+  void _updateInAppNavigation(Position position) {
+    if (_mapController == null) return;
+    
+    // Auto-rotate and tilt the camera to face the direction of travel
+    // This creates an "in-app navigation" feel
+    _mapController!.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(
+          target: LatLng(position.latitude, position.longitude),
+          zoom: 17,
+          tilt: 45,
+          bearing: position.heading,
+        ),
+      ),
+    );
+    
+    // Refresh route occasionally
+    _fetchRoute();
+  }
+
+  Future<void> _initRiderData() async {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<RiderProvider>(context, listen: false).fetchRiderData();
+    });
+    
+    try {
+      final pos = await Geolocator.getCurrentPosition();
+      setState(() => _currentRiderPosition = pos);
+      _fetchRoute();
+    } catch (e) {
+      debugPrint("Couldn't get current position: $e");
+    }
+  }
+
+  Future<void> _fetchRoute() async {
+    final riderProvider = Provider.of<RiderProvider>(context, listen: false);
+    final order = riderProvider.activeOrder;
+    if (order == null || _currentRiderPosition == null) return;
+
+    final bool isHeadingToPickup = order.status.toLowerCase() == 'assigned';
+    final double destLat = isHeadingToPickup ? (order.storeLatitude ?? 0) : (order.latitude ?? 0);
+    final double destLng = isHeadingToPickup ? (order.storeLongitude ?? 0) : (order.longitude ?? 0);
+
+    if (destLat == 0) return;
+
+    final url = "https://router.project-osrm.org/route/v1/driving/${_currentRiderPosition!.longitude},${_currentRiderPosition!.latitude};$destLng,$destLat?geometries=geojson";
+    
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['routes'] != null && data['routes'].isNotEmpty) {
+          final List coords = data['routes'][0]['geometry']['coordinates'];
+          setState(() {
+            _polylinePoints = coords.map((c) => LatLng(c[1], c[0])).toList();
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching route: $e");
+    }
+  }
+
+  Future<void> _openMaps(double lat, double lng) async {
+    final url = Uri.parse("google.navigation:q=$lat,$lng&mode=d");
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url);
+    } else {
+      final webUrl = Uri.parse("https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving");
+      if (await canLaunchUrl(webUrl)) {
+        await launchUrl(webUrl);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final riderProvider = Provider.of<RiderProvider>(context);
+    final isOnline = riderProvider.isOnline;
+    final activeOrder = riderProvider.activeOrder;
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: AppTheme.primaryColor,
+        elevation: 0,
+        centerTitle: true,
+        title: const Text('Active Navigation', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: Row(
+              children: [
+                Text(isOnline ? 'ONLINE' : 'OFFLINE', style: TextStyle(color: isOnline ? Colors.greenAccent : Colors.white60, fontSize: 10, fontWeight: FontWeight.w900)),
+                const SizedBox(width: 4),
+                Switch(
+                  value: isOnline,
+                  onChanged: (val) => riderProvider.toggleAvailability(val),
+                  activeColor: Colors.greenAccent,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      body: activeOrder == null
+        ? _buildNoActiveTask(context)
+        : Stack(
+            children: [
+              _buildMapView(activeOrder),
+              _buildFloatingHeader(activeOrder),
+              _buildDraggableDetails(activeOrder, riderProvider),
+            ],
+          ),
+    );
+  }
+
+  Widget _buildMapView(OrderModel order) {
+    final bool isHeadingToPickup = order.status.toLowerCase() == 'assigned';
+    
+    LatLng? storePos = (order.storeLatitude != null && order.storeLatitude != 0 && order.storeLatitude! >= -90 && order.storeLatitude! <= 90) 
+        ? LatLng(order.storeLatitude!, order.storeLongitude!) : null;
+    LatLng? customerPos = (order.latitude != null && order.latitude != 0 && order.latitude! >= -90 && order.latitude! <= 90) 
+        ? LatLng(order.latitude!, order.longitude!) : null;
+    LatLng? riderPos = _currentRiderPosition != null 
+        ? LatLng(_currentRiderPosition!.latitude, _currentRiderPosition!.longitude) : null;
+
+    // DEBUG INFO
+    debugPrint("MAP DEBUG: Order #${order.orderNumber}");
+    debugPrint("MAP DEBUG: Store Coordinates: ${storePos?.latitude}, ${storePos?.longitude}");
+    debugPrint("MAP DEBUG: Customer Coordinates: ${customerPos?.latitude}, ${customerPos?.longitude}");
+    debugPrint("MAP DEBUG: Rider Coordinates: ${riderPos?.latitude}, ${riderPos?.longitude}");
+
+    LatLng cameraTarget;
+    if (isHeadingToPickup && storePos != null) {
+      cameraTarget = storePos;
+    } else if (customerPos != null) {
+      cameraTarget = customerPos;
+    } else if (riderPos != null) {
+      cameraTarget = riderPos;
+    } else {
+      cameraTarget = const LatLng(-1.286389, 36.817223); // Nairobi fallback
+    }
+
+    final markers = <Marker>{
+      if (storePos != null)
+        Marker(
+          markerId: const MarkerId('store'),
+          position: storePos,
+          infoWindow: InfoWindow(title: order.storeName ?? 'Store'),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+        ),
+      if (customerPos != null)
+        Marker(
+          markerId: const MarkerId('customer'),
+          position: customerPos,
+          infoWindow: InfoWindow(title: order.customerName ?? 'Customer'),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+        ),
+      if (riderPos != null)
+        Marker(
+          markerId: const MarkerId('rider'),
+          position: riderPos,
+          infoWindow: const InfoWindow(title: 'You (Rider)'),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+        ),
+    };
+
+    return GoogleMap(
+      initialCameraPosition: CameraPosition(
+        target: cameraTarget,
+        zoom: 15,
+      ),
+      myLocationEnabled: true,
+      myLocationButtonEnabled: true,
+      zoomControlsEnabled: true,
+      mapType: MapType.normal,
+      onMapCreated: (controller) {
+        _mapController = controller;
+        _updateCameraBounds(storePos, customerPos, riderPos, isHeadingToPickup);
+      },
+      markers: markers,
+      polylines: {
+        if (_polylinePoints.isNotEmpty)
+          Polyline(
+            polylineId: const PolylineId('route'),
+            points: _polylinePoints,
+            color: AppTheme.primaryColor,
+            width: 5,
+            jointType: JointType.round,
+            startCap: Cap.roundCap,
+            endCap: Cap.roundCap,
+          ),
+      },
+    );
+  }
+
+  void _updateCameraBounds(LatLng? store, LatLng? customer, LatLng? rider, bool isHeadingToPickup) {
+    if (_mapController == null) return;
+
+    List<LatLng> points = [];
+    if (rider != null) points.add(rider);
+    
+    if (isHeadingToPickup) {
+      if (store != null) points.add(store);
+    } else {
+      if (customer != null) points.add(customer);
+    }
+
+    if (points.length < 2) return;
+
+    double minLat = points.first.latitude;
+    double maxLat = points.first.latitude;
+    double minLng = points.first.longitude;
+    double maxLng = points.first.longitude;
+
+    for (var p in points) {
+      if (p.latitude < minLat) minLat = p.latitude;
+      if (p.latitude > maxLat) maxLat = p.latitude;
+      if (p.longitude < minLng) minLng = p.longitude;
+      if (p.longitude > maxLng) maxLng = p.longitude;
+    }
+
+    final bounds = LatLngBounds(
+      southwest: LatLng(minLat, minLng),
+      northeast: LatLng(maxLat, maxLng),
+    );
+
+    Future.delayed(const Duration(milliseconds: 500), () {
+      _mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 100));
+    });
+  }
+
+  Widget _buildFloatingHeader(OrderModel order) {
+    final bool isHeadingToPickup = order.status.toLowerCase() == 'assigned';
+    final double? targetLat = isHeadingToPickup ? order.storeLatitude : order.latitude;
+    final double? targetLng = isHeadingToPickup ? order.storeLongitude : order.longitude;
+
+    return Positioned(
+      top: 16,
+      left: 16,
+      right: 16,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10)],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.navigation_rounded, color: Colors.white, size: 18),
+                const SizedBox(width: 10),
+                Text(
+                  '#${order.orderNumber}',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.5),
+                ),
+              ],
+            ),
+          ),
+          if (targetLat != null && targetLng != null && targetLat != 0)
+            FloatingActionButton.small(
+              onPressed: () => _openMaps(targetLat, targetLng),
+              backgroundColor: Colors.white,
+              child: const Icon(Icons.directions_rounded, color: AppTheme.primaryColor),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDraggableDetails(OrderModel order, RiderProvider provider) {
+    final bool isHeadingToPickup = order.status.toLowerCase() == 'assigned';
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.35,
+      minChildSize: 0.15,
+      maxChildSize: 0.8,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20)],
+          ),
+          child: ListView(
+            controller: scrollController,
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            children: [
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 20),
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                   Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isHeadingToPickup ? 'NEXT STEP: PICKUP' : 'NEXT STEP: DELIVERY', 
+                        style: const TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)
+                      ),
+                      Text(
+                        order.status.replaceAll('_', ' ').toUpperCase(), 
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppTheme.primaryColor)
+                      ),
+                    ],
+                  ),
+                  if (order.customerPhone != null)
+                    GestureDetector(
+                      onTap: () => launchUrl(Uri.parse('tel:${order.customerPhone}')),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(color: AppTheme.accentColor.withValues(alpha: 0.1), shape: BoxShape.circle),
+                        child: const Icon(Icons.phone_in_talk_rounded, color: AppTheme.accentColor),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              _buildAddressRow(
+                Icons.storefront_rounded, 
+                'PICKUP FROM', 
+                order.storeName ?? 'Merchant Store', 
+                isPickup: true,
+                isActive: isHeadingToPickup
+              ),
+              const Padding(
+                padding: EdgeInsets.only(left: 11),
+                child: Align(alignment: Alignment.centerLeft, child: Text('⋮', style: TextStyle(color: Colors.grey, fontSize: 18))),
+              ),
+              _buildAddressRow(
+                Icons.location_on_rounded, 
+                'DELIVER TO', 
+                order.addressString ?? 'Customer Address',
+                isActive: !isHeadingToPickup
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  onPressed: provider.isLoading ? null : () async {
+                    final nextStatus = _getNextStatusValue(order.status);
+                    if (nextStatus != null) {
+                      final success = await provider.updateOrderStatus(order.id, nextStatus);
+                      if (success && mounted) {
+                        if (nextStatus == 'delivered') {
+                          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const DeliveryCompleteScreen()));
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Status updated to ${nextStatus.replaceAll('_', ' ').toUpperCase()}'), 
+                              backgroundColor: AppTheme.primaryColor,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
+                  ),
+                  child: provider.isLoading 
+                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : Text(
+                        _getActionText(order.status),
+                        style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1, color: Colors.white),
+                      ),
+                ),
+              ),
+              const SizedBox(height: 30),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAddressRow(IconData icon, String label, String value, {bool isPickup = false, bool isActive = false}) {
+    return Row(
+      children: [
+        Icon(icon, size: 22, color: isActive ? (isPickup ? AppTheme.primaryColor : AppTheme.accentColor) : Colors.grey.shade300),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: TextStyle(color: Colors.grey.shade400, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+              Text(
+                value, 
+                style: TextStyle(
+                  fontSize: 14, 
+                  fontWeight: FontWeight.w800, 
+                  color: isActive ? const Color(0xFF1E293B) : Colors.grey.shade400
+                ), 
+                maxLines: 1, 
+                overflow: TextOverflow.ellipsis
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNoActiveTask(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(30),
+            decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.05), shape: BoxShape.circle),
+            child: Icon(Icons.navigation_outlined, size: 80, color: AppTheme.primaryColor.withValues(alpha: 0.2)),
+          ),
+          const SizedBox(height: 30),
+          const Text('No Active Tasks', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppTheme.primaryColor)),
+          const SizedBox(height: 10),
+          const Text('Accepted orders will appear here for navigation.', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 30),
+          ElevatedButton.icon(
+            onPressed: () => Provider.of<RiderProvider>(context, listen: false).fetchRiderData(),
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('REFRESH QUEUE'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getActionText(String status) {
+    switch (status.toLowerCase()) {
+      case 'assigned': return 'MARK AS PICKED UP';
+      case 'picked_up': return 'MARK AS ARRIVED';
+      case 'arrived': return 'COMPLETE DELIVERY';
+      default: return 'GO TO NEXT TASK';
+    }
+  }
+
+  String? _getNextStatusValue(String status) {
+    switch (status.toLowerCase()) {
+      case 'assigned': return 'picked_up';
+      case 'picked_up': return 'arrived';
+      case 'arrived': return 'delivered';
+      default: return null;
+    }
+  }
+}
