@@ -12,6 +12,8 @@ class UserModel {
   final double walletBalance;
   final String? profilePicture;
   final bool isAvailable;
+  final bool isAgeVerified;
+  final int riskScore;
 
   // Rider specific
   final String? bankName;
@@ -32,6 +34,8 @@ class UserModel {
     this.walletBalance = 0.0,
     this.profilePicture,
     this.isAvailable = false,
+    this.isAgeVerified = false,
+    this.riskScore = 0,
     this.bankName,
     this.bankAccountName,
     this.bankAccountNumber,
@@ -59,6 +63,8 @@ class UserModel {
       walletBalance: double.tryParse(json['wallet_balance']?.toString() ?? '0.0') ?? 0.0,
       profilePicture: photoUrl,
       isAvailable: json['is_available'] ?? false,
+      isAgeVerified: json['is_age_verified'] ?? false,
+      riskScore: json['risk_score'] ?? 0,
       bankName: json['bank_name'],
       bankAccountName: json['bank_account_name'],
       bankAccountNumber: json['bank_account_number'],
@@ -80,6 +86,8 @@ class UserModel {
       'wallet_balance': walletBalance,
       'profile_picture': profilePicture,
       'is_available': isAvailable,
+      'is_age_verified': isAgeVerified,
+      'risk_score': riskScore,
       'bank_name': bankName,
       'bank_account_name': bankAccountName,
       'bank_account_number': bankAccountNumber,

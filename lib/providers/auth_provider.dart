@@ -78,6 +78,8 @@ class AuthProvider with ChangeNotifier {
     required String fullName,
     required String phone,
     required String role,
+    String? dob,
+    Map<String, dynamic>? metadata,
   }) async {
     _status = AuthStatus.authenticating;
     _errorMessage = null;
@@ -91,6 +93,8 @@ class AuthProvider with ChangeNotifier {
         'username': email, // Use email as username
         'full_name': fullName,
         'phone': phone,
+        'dob': dob,
+        'verification_metadata': metadata,
       });
 
       if (response.statusCode == 201 || response.statusCode == 200) {
@@ -128,11 +132,15 @@ class AuthProvider with ChangeNotifier {
   Future<void> checkAuth() async {
     final token = await _storage.read(key: 'access_token');
     final role = await _storage.read(key: 'role');
-    if (token != null) {
+    
+    if (token != null && role != null) {
       _role = role;
       _status = AuthStatus.authenticated;
     } else {
+      _role = null;
       _status = AuthStatus.unauthenticated;
+      // If we have a token but no role, it's an inconsistent state.
+      if (token != null) await logout();
     }
     notifyListeners();
   }

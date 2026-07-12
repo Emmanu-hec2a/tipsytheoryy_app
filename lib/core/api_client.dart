@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiClient {
   final Dio dio;
@@ -20,7 +21,7 @@ class ApiClient {
   // Use localhost for iOS Simulator
   // static const String baseUrl = 'https://tipsytheoryy.com/api/v1/';
   // If 10.0.2.2 fails, try the actual machine IP or ensure Django is running on 0.0.0.0
-  static const String baseUrl = 'http://192.168.0.15:8000/api/v1/';
+  static final String baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://localhost:8000/api/v1/';
 
   ApiClient() : dio = Dio(BaseOptions(
     baseUrl: baseUrl,

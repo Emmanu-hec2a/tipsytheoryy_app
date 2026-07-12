@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/theme.dart';
 import 'screens/landing/landing_screen.dart';
 import 'screens/customer/cart_screen.dart';
@@ -24,6 +25,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   try {
+    await dotenv.load(fileName: ".env");
     await Firebase.initializeApp();
     await NotificationService().initialize();
   } catch (e) {
@@ -128,9 +130,18 @@ class _AuthWrapperState extends State<AuthWrapper> {
     final authProvider = Provider.of<AuthProvider>(context);
     
     if (authProvider.status == AuthStatus.authenticated) {
-      return authProvider.role == 'rider' 
-          ? const RiderShell() 
-          : const CustomerShell();
+      if (authProvider.role == 'rider') {
+        return const RiderShell();
+      } else if (authProvider.role == 'customer') {
+        return const CustomerShell();
+      } else {
+        // Role is loading or missing - show loading
+        return const Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(color: AppTheme.primaryColor),
+          ),
+        );
+      }
     }
 
     return const LandingScreen();

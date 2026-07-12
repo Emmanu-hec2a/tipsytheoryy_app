@@ -167,12 +167,13 @@ class RiderProvider with ChangeNotifier {
     return false;
   }
 
-  Future<bool> updateOrderStatus(int orderId, String newStatus) async {
+  Future<bool> updateOrderStatus(int orderId, String newStatus, {String? verificationMethod}) async {
     _isLoading = true;
     notifyListeners();
     try {
       final response = await _apiClient.patch('rider/orders/$orderId/status/', data: {
-        'status': newStatus
+        'status': newStatus,
+        if (verificationMethod != null) 'verification_method': verificationMethod,
       });
       if (response.statusCode == 200) {
         await _pollData();

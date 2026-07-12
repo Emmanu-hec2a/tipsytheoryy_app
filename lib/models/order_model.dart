@@ -21,6 +21,8 @@ class OrderModel {
   final String? storeName;
   final double? storeLatitude;
   final double? storeLongitude;
+  final bool requiresRiderVerification;
+  final DateTime? riderVerifiedAt;
 
   OrderModel({
     required this.id,
@@ -43,6 +45,8 @@ class OrderModel {
     this.storeName,
     this.storeLatitude,
     this.storeLongitude,
+    this.requiresRiderVerification = false,
+    this.riderVerifiedAt,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -67,6 +71,8 @@ class OrderModel {
       storeName: json['store_name'],
       storeLatitude: double.tryParse(json['store_latitude']?.toString() ?? ''),
       storeLongitude: double.tryParse(json['store_longitude']?.toString() ?? ''),
+      requiresRiderVerification: json['requires_rider_verification'] ?? false,
+      riderVerifiedAt: json['rider_verified_at'] != null ? DateTime.parse(json['rider_verified_at']) : null,
     );
   }
 }

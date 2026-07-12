@@ -6,6 +6,7 @@ import '../../providers/cart_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../core/api_client.dart';
 import 'payment_pending_screen.dart';
+import 'age_verification_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
@@ -72,7 +73,33 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         'address_string': _capturedAddress,
         'payment_method': _selectedPaymentMethod,
         'use_wallet': _useWallet,
+        'total': cart.total, // Pass total for risk calculation
       });
+
+      if (orderResponse.statusCode == 403 && orderResponse.data['error'] == 'age_verification_required') {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => Container(
+              height: MediaQuery.of(context).size.height * 0.85,
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+              ),
+              child: AgeVerificationScreen(
+                onVerified: () {
+                  Navigator.pop(context); // Close sheet
+                  _placeOrder(); // Retry order
+                },
+              ),
+            ),
+          );
+        }
+        return;
+      }
 
       if (orderResponse.statusCode != 201) {
         throw Exception(orderResponse.data['error'] ?? 'Order could not be created');

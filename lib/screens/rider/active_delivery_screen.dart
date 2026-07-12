@@ -363,6 +363,22 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
                       ),
                     ],
                   ),
+                  if (order.requiresRiderVerification)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.verified_user_rounded, color: Colors.red, size: 14),
+                          SizedBox(width: 6),
+                          Text('ID CHECK REQ.', style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                        ],
+                      ),
+                    ),
                   if (order.customerPhone != null)
                     GestureDetector(
                       onTap: () => launchUrl(Uri.parse('tel:${order.customerPhone}')),
@@ -394,6 +410,33 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
                 order.addressString ?? 'Customer Address',
                 isActive: !isHeadingToPickup
               ),
+              if (order.requiresRiderVerification && !isHeadingToPickup) ...[
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withValues(alpha: isDark ? 0.05 : 0.1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.amber.withValues(alpha: 0.2)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline_rounded, color: Colors.amber),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Age verification required. Please check the recipient\'s National ID or Passport.',
+                          style: TextStyle(
+                            fontSize: 12, 
+                            fontWeight: FontWeight.w600, 
+                            color: isDark ? Colors.amber.shade200 : Colors.amber.shade900
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
@@ -402,6 +445,11 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
                   onPressed: provider.isLoading ? null : () async {
                     final nextStatus = _getNextStatusValue(order.status);
                     if (nextStatus != null) {
+                      if (nextStatus == 'delivered' && order.requiresRiderVerification) {
+                        _showVerificationDialog(context, order, provider);
+                        return;
+                      }
+
                       final success = await provider.updateOrderStatus(order.id, nextStatus);
                       if (success && mounted) {
                         if (nextStatus == 'delivered') {
@@ -512,6 +560,100 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
       case 'picked_up': return 'arrived';
       case 'arrived': return 'delivered';
       default: return null;
+    }
+  }
+
+  void _showVerificationDialog(BuildContext context, OrderModel order, RiderProvider provider) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.verified_user_rounded, color: AppTheme.accentColor, size: 28),
+                SizedBox(width: 12),
+                Text('Age Verification', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Please confirm the identity of the recipient for compliance.',
+              style: TextStyle(color: isDark ? Colors.white38 : Colors.grey, fontSize: 14),
+            ),
+            const SizedBox(height: 24),
+            _buildVerificationOption(
+              context,
+              'ID Matches Recipient',
+              'Confirmed Face and ID Name',
+              Icons.face_rounded,
+              () => _completeWithVerification(context, order, provider, 'face_id_match'),
+            ),
+            const SizedBox(height: 12),
+            _buildVerificationOption(
+              context,
+              'National ID Checked',
+              'Verified DOB on Gov. Document',
+              Icons.badge_rounded,
+              () => _completeWithVerification(context, order, provider, 'national_id_check'),
+            ),
+            const SizedBox(height: 30),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVerificationOption(BuildContext context, String title, String subtitle, IconData icon, VoidCallback onTap) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), shape: BoxShape.circle),
+              child: Icon(icon, color: AppTheme.primaryColor),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                  Text(subtitle, style: TextStyle(color: isDark ? Colors.white38 : Colors.grey, fontSize: 12)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _completeWithVerification(BuildContext context, OrderModel order, RiderProvider provider, String method) async {
+    Navigator.pop(context); // Close sheet
+    final success = await provider.updateOrderStatus(order.id, 'delivered', verificationMethod: method);
+    if (success && mounted) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const DeliveryCompleteScreen()));
     }
   }
 }

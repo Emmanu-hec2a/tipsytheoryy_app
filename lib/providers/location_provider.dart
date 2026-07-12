@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import '../core/api_client.dart';
@@ -6,6 +7,7 @@ import '../models/address_model.dart';
 
 class LocationProvider with ChangeNotifier {
   final ApiClient _apiClient = ApiClient();
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   List<AddressModel> _savedAddresses = [];
   AddressModel? _currentAddress;
@@ -18,6 +20,10 @@ class LocationProvider with ChangeNotifier {
   String? get error => _error;
 
   Future<void> fetchAddresses() async {
+    // 🛡️ Guard: Only fetch if the user is a customer
+    final role = await _storage.read(key: 'role');
+    if (role != 'customer') return;
+
     _isLoading = true;
     notifyListeners();
     try {

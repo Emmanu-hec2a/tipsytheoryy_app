@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../core/api_client.dart';
 import '../models/product_model.dart';
@@ -7,11 +8,8 @@ import '../models/category_model.dart';
 
 class ProductProvider with ChangeNotifier {
   BuildContext? _context;
-
-  void updateContext(BuildContext context) {
-    _context = context;
-  }
   final ApiClient _apiClient = ApiClient();
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   List<ProductModel> _featuredProducts = [];
   List<StoreModel> _popularStores = [];
@@ -24,6 +22,10 @@ class ProductProvider with ChangeNotifier {
   bool _isSearching = false;
   bool _isProOnly = false;
   String? _error;
+
+  void updateContext(BuildContext context) {
+    _context = context;
+  }
 
   List<ProductModel> get featuredProducts => _featuredProducts;
   List<StoreModel> get popularStores => _popularStores;
@@ -43,6 +45,10 @@ class ProductProvider with ChangeNotifier {
   }
 
   Future<void> fetchHomeData({double? lat, double? lng}) async {
+    // 🛡️ Guard: Only fetch if the user is a customer
+    final role = await _storage.read(key: 'role');
+    if (role != 'customer') return;
+
     _isLoading = true;
     _error = null;
     notifyListeners();

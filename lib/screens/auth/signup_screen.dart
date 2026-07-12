@@ -21,7 +21,13 @@ class _SignupScreenState extends State<SignupScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _dobController = TextEditingController();
   
+  // Silent Sentry Logic
+  DateTime? _selectedDob;
+  DateTime? _pickerStartTime;
+  int _pickerInteractionMs = 0;
+
   // Controllers for rider-specific fields
   final _regController = TextEditingController();
   final _licenseController = TextEditingController();
@@ -65,6 +71,11 @@ class _SignupScreenState extends State<SignupScreen> {
       fullName: _nameController.text.trim(),
       phone: _phoneController.text.trim(),
       role: widget.role,
+      dob: _selectedDob?.toIso8601String().split('T')[0],
+      metadata: {
+        'picker_interaction_ms': _pickerInteractionMs,
+        'signup_duration_ms': DateTime.now().difference(_pickerStartTime ?? DateTime.now()).inMilliseconds,
+      },
     );
 
     if (success && mounted) {
@@ -236,6 +247,39 @@ class _SignupScreenState extends State<SignupScreen> {
                       validator: (val) => val == null || val.isEmpty ? 'Required' : null,
                     ),
                     
+                    const SizedBox(height: 12),
+                    _buildLabel('Quick check to continue', isDark),
+                    GestureDetector(
+                      onTap: () => _showDobPicker(context, isDark),
+                      child: AbsorbPointer(
+                        child: TextFormField(
+                          controller: _dobController,
+                          style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                          decoration: InputDecoration(
+                            hintText: 'Date of Birth',
+                            hintStyle: TextStyle(color: isDark ? Colors.white24 : null),
+                            fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : null,
+                            prefixIcon: Icon(Icons.cake_outlined, size: 20, color: isDark ? Colors.white38 : null),
+                          ),
+                          validator: (val) {
+                            if (val == null || val.isEmpty) return 'Required';
+                            if (_selectedDob != null) {
+                              final age = DateTime.now().year - _selectedDob!.year;
+                              if (age < 18) return 'Must be 18+ to join';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4, left: 4),
+                      child: Text(
+                        'Secure & private. Used only for age confirmation.',
+                        style: TextStyle(fontSize: 11, color: isDark ? Colors.white24 : Colors.grey),
+                      ),
+                    ),
+                    
                     if (!isRider) ...[
                       const SizedBox(height: 12),
                       _buildLabel('Location', isDark),
@@ -346,5 +390,37 @@ class _SignupScreenState extends State<SignupScreen> {
       padding: const EdgeInsets.only(bottom: 6),
       child: Text(text, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isDark ? Colors.white70 : Colors.black87)),
     );
+  }
+
+  void _showDobPicker(BuildContext context, bool isDark) async {
+    _pickerStartTime = DateTime.now();
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(2000),
+      firstDate: DateTime(1920),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.dark(
+              primary: AppTheme.accentColor,
+              onPrimary: Colors.white,
+              surface: isDark ? const Color(0xFF1E293B) : Colors.white,
+              onSurface: isDark ? Colors.white : Colors.black,
+            ),
+            dialogBackgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null && picked != _selectedDob) {
+      setState(() {
+        _selectedDob = picked;
+        _dobController.text = "${picked.day}/${picked.month}/${picked.year}";
+        _pickerInteractionMs = DateTime.now().difference(_pickerStartTime!).inMilliseconds;
+      });
+    }
   }
 }

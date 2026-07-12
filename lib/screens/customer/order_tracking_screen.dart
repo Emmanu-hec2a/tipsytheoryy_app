@@ -339,6 +339,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                             _buildOrderSummary(),
                             const SizedBox(height: 20),
                             _buildStatusStepper(),
+                            if (_order?.requiresRiderVerification == true && _order?.status != 'delivered') 
+                              _buildVerificationNotice(isDark),
                             const SizedBox(height: 30),
                             SizedBox(
                               width: double.infinity,
@@ -651,5 +653,39 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       default:
         return 'Pending';
     }
+  }
+
+  Widget _buildVerificationNotice(bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(top: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.accentColor.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.accentColor.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.badge_rounded, color: AppTheme.accentColor),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'ID Verification Required',
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: isDark ? Colors.white : AppTheme.primaryColor),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Please have your National ID or Passport ready for the rider upon arrival.',
+                  style: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : Colors.grey.shade600),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

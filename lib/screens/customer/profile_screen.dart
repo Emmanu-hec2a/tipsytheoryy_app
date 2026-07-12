@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
@@ -84,6 +85,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ]),
                   _buildSectionTitle('Support & Legal'),
                   _buildMenuCard([
+                    _buildMenuItem(
+                      Icons.coffee_rounded, 
+                      'Support Developer', 
+                      onTap: () => _launchSupportUrl(),
+                    ),
                     _buildMenuItem(Icons.headset_mic_outlined, 'Help & Support', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SupportLegalScreen()))),
                     _buildMenuItem(Icons.info_outline_rounded, 'About TipsyTheoryy', onTap: () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const LegalContentScreen(
@@ -640,5 +646,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _launchSupportUrl() async {
+    final Uri url = Uri.parse('https://selar.com/showlove/tipsytheoryy');
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not launch support link')),
+        );
+      }
+    }
   }
 }
