@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../../core/theme.dart';
 import '../../providers/rider_provider.dart';
 
@@ -23,11 +24,13 @@ class _RiderEarningsScreenState extends State<RiderEarningsScreen> {
   Widget build(BuildContext context) {
     final riderProvider = Provider.of<RiderProvider>(context);
     final summary = riderProvider.earningsSummary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: AppTheme.primaryColor,
+        elevation: 0,
         title: const Text('Earnings', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)),
         centerTitle: true,
       ),
@@ -41,7 +44,7 @@ class _RiderEarningsScreenState extends State<RiderEarningsScreen> {
             children: [
               _buildTotalCard(summary),
               const SizedBox(height: 32),
-              const Text('TRANSACTION HISTORY', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 1.2)),
+              Text('TRANSACTION HISTORY', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: isDark ? Colors.white38 : Colors.grey, letterSpacing: 1.2)),
               const SizedBox(height: 16),
               _buildEarningsList(riderProvider),
               const SizedBox(height: 40),
@@ -96,26 +99,75 @@ class _RiderEarningsScreenState extends State<RiderEarningsScreen> {
   }
 
   Widget _buildEarningsList(RiderProvider provider) {
-    // Note: In production, we'd fetch the detailed earnings list.
-    // For now, we reuse the summary or fetch it from a new provider method if needed.
-    return Container(
-      padding: const EdgeInsets.all(40),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.grey.shade100),
-      ),
-      child: Center(
-        child: Column(
-          children: [
-            Icon(Icons.receipt_long_rounded, size: 48, color: Colors.grey.shade200),
-            const SizedBox(height: 16),
-            const Text('Details coming soon', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.grey)),
-            const SizedBox(height: 4),
-            const Text('Detailed breakdown will appear here.', style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
-          ],
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    if (provider.earningsHistory.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(40),
+        decoration: BoxDecoration(
+          color: isDark ? Theme.of(context).cardColor : Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade100),
         ),
-      ),
+        child: Center(
+          child: Column(
+            children: [
+              Icon(Icons.receipt_long_rounded, size: 48, color: isDark ? Colors.white10 : Colors.grey.shade200),
+              const SizedBox(height: 16),
+              Text('No earnings yet', style: TextStyle(fontWeight: FontWeight.w900, color: isDark ? Colors.white38 : Colors.grey)),
+              const SizedBox(height: 4),
+              Text('Your earnings will appear here after deliveries.', style: TextStyle(color: isDark ? Colors.white24 : Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: provider.earningsHistory.length,
+      itemBuilder: (context, index) {
+        final item = provider.earningsHistory[index];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: isDark ? Theme.of(context).cardColor : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: isDark ? [] : [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)],
+            border: isDark ? Border.all(color: Colors.white10) : null,
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), shape: BoxShape.circle),
+                child: const Icon(Icons.add_rounded, color: Colors.green, size: 20),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Delivery #${item['order_number'] ?? item['order'] ?? 'N/A'}', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: isDark ? Colors.white70 : Colors.black87)),
+                    const SizedBox(height: 2),
+                    Text(
+                      item['created_at'] != null 
+                        ? DateFormat('MMM dd, hh:mm a').format(DateTime.parse(item['created_at']))
+                        : 'Unknown date', 
+                      style: TextStyle(color: isDark ? Colors.white24 : Colors.grey.shade400, fontSize: 11, fontWeight: FontWeight.bold)
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                '+ KSh ${item['total'] ?? '0'}', 
+                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Colors.green)
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

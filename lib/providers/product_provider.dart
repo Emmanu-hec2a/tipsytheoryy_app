@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../core/api_client.dart';
 import '../models/product_model.dart';
 import '../models/store_model.dart';
 import '../models/category_model.dart';
 
 class ProductProvider with ChangeNotifier {
+  BuildContext? _context;
+
+  void updateContext(BuildContext context) {
+    _context = context;
+  }
   final ApiClient _apiClient = ApiClient();
 
   List<ProductModel> _featuredProducts = [];
@@ -65,11 +71,13 @@ class ProductProvider with ChangeNotifier {
       if (responses[0].statusCode == 200) {
         final List data = responses[0].data;
         _featuredProducts = data.map((json) => ProductModel.fromJson(json)).toList();
+        _prefetchImages(_featuredProducts.map((p) => p.image).whereType<String>().toList());
       }
 
       if (responses[1].statusCode == 200) {
         final List data = responses[1].data;
         _popularStores = data.map((json) => StoreModel.fromJson(json)).toList();
+        _prefetchImages(_popularStores.map((s) => s.logo).whereType<String>().toList());
       }
 
       if (responses[2].statusCode == 200) {
@@ -82,6 +90,13 @@ class ProductProvider with ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  void _prefetchImages(List<String> urls) {
+    if (_context == null) return;
+    for (final url in urls) {
+      precacheImage(CachedNetworkImageProvider(url), _context!);
     }
   }
 

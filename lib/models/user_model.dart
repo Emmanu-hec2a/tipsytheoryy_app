@@ -69,13 +69,22 @@ class UserModel {
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
+      'username': username,
+      'email': email,
+      'phone': phone,
       'first_name': firstName,
       'last_name': lastName,
-      'phone': phone,
+      'role': role,
+      'loyalty_points': loyaltyPoints,
+      'wallet_balance': walletBalance,
+      'profile_picture': profilePicture,
       'is_available': isAvailable,
       'bank_name': bankName,
       'bank_account_name': bankAccountName,
       'bank_account_number': bankAccountNumber,
+      'avg_rating': avgRating,
+      'total_deliveries': totalDeliveries,
     };
   }
 

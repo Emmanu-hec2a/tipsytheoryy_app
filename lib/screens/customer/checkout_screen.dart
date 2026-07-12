@@ -19,7 +19,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   bool _isLoading = false;
   String? _capturedAddress;
   Position? _currentPosition;
-  String _selectedPaymentMethod = 'flutterwave';
+  String _selectedPaymentMethod = 'mpesa';
   bool _useWallet = false;
 
   @override
@@ -70,7 +70,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         'latitude': _currentPosition?.latitude,
         'longitude': _currentPosition?.longitude,
         'address_string': _capturedAddress,
-        'payment_method': _selectedPaymentMethod == 'flutterwave' ? 'flutterwave' : 'cod',
+        'payment_method': _selectedPaymentMethod,
         'use_wallet': _useWallet,
       });
 
@@ -81,33 +81,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       final orderId = orderResponse.data['id'];
       final orderNumber = orderResponse.data['order_number'] ?? '#$orderId';
 
-      if (_selectedPaymentMethod == 'flutterwave' && totalAmount > 0) {
-        final paymentResponse = await _apiClient.post('partner/payments/flutterwave/initiate/', data: {
-          'order_id': orderId,
-          'amount': totalAmount.toStringAsFixed(2),
-          'currency': 'KES',
-          'email': orderResponse.data['customer_email'] ?? '',
-          'name': orderResponse.data['customer_name'] ?? 'Customer',
-        });
-
-        if (paymentResponse.statusCode == 200 && paymentResponse.data['payment_url'] != null) {
-          cart.clearCart();
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => PaymentPendingScreen(
-                  orderId: orderId,
-                  orderNumber: orderNumber,
-                  paymentUrl: paymentResponse.data['payment_url'],
-                ),
+      if (_selectedPaymentMethod == 'mpesa' && totalAmount > 0) {
+        // The backend already initiated the STK push
+        final checkoutRequestId = orderResponse.data['checkout_request_id'];
+        
+        cart.clearCart();
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => PaymentPendingScreen(
+                orderId: orderId,
+                orderNumber: orderNumber,
+                checkoutRequestId: checkoutRequestId,
               ),
-            );
-          }
-          return;
+            ),
+          );
         }
-
-        throw Exception(paymentResponse.data['detail'] ?? 'Payment could not be started');
+        return;
       }
 
       cart.clearCart();
@@ -128,8 +119,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   @override
   Widget build(BuildContext context) {
     final cart = Provider.of<CartProvider>(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: AppTheme.primaryColor,
         elevation: 0,
@@ -152,9 +145,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.surfaceColor,
+                color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200),
+                border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
               ),
               child: Row(
                 children: [
@@ -163,10 +156,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   Expanded(
                     child: Text(
                       _capturedAddress ?? 'Locating you...',
-                      style: TextStyle(color: _capturedAddress == null ? Colors.grey : Colors.black87),
+                      style: TextStyle(color: _capturedAddress == null ? (isDark ? Colors.white24 : Colors.grey) : (isDark ? Colors.white70 : Colors.black87)),
                     ),
                   ),
-                  IconButton(onPressed: _captureLocation, icon: const Icon(Icons.refresh, size: 20)),
+                  IconButton(onPressed: _captureLocation, icon: Icon(Icons.refresh, size: 20, color: isDark ? Colors.white38 : Colors.grey)),
                 ],
               ),
             ),
@@ -174,8 +167,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             _buildSection('Payment Method'),
             const SizedBox(height: 12),
             GestureDetector(
-              onTap: () => setState(() => _selectedPaymentMethod = 'flutterwave'),
-              child: _buildPaymentOption('Flutterwave Card/Bank', Icons.credit_card, _selectedPaymentMethod == 'flutterwave'),
+              onTap: () => setState(() => _selectedPaymentMethod = 'mpesa'),
+              child: _buildPaymentOption('M-Pesa STK Push', Icons.phone_android_rounded, _selectedPaymentMethod == 'mpesa'),
             ),
             GestureDetector(
               onTap: () => setState(() => _selectedPaymentMethod = 'cod'),
@@ -206,8 +199,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 child: _isLoading 
                     ? const CircularProgressIndicator(color: Colors.white) 
                     : Text(
-                        _selectedPaymentMethod == 'flutterwave'
-                            ? 'Confirm & Pay Online'
+                        _selectedPaymentMethod == 'mpesa'
+                            ? 'Pay via M-PESA'
                             : 'Confirm Order',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
@@ -224,14 +217,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildTrustBanner(CartProvider cart) {
-    // We check if the items in the cart are from a Pro store
-    // For now we'll show it if the cart isn't empty and the first item's store is pro
-    // In a multi-vendor setup we might check if ANY are pro or if ALL are pro
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF2DD4BF).withValues(alpha: 0.1),
+        color: const Color(0xFF2DD4BF).withValues(alpha: isDark ? 0.05 : 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFF2DD4BF).withValues(alpha: 0.2)),
       ),
@@ -239,11 +230,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         children: [
           const Icon(Icons.verified_user_rounded, color: Color(0xFF2DD4BF), size: 20),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Text(
               'Ordering from a Pro-Verified Merchant. Quality and speed are guaranteed.',
               style: TextStyle(
-                color: Color(0xFF0D3B30),
+                color: isDark ? const Color(0xFF2DD4BF).withValues(alpha: 0.8) : const Color(0xFF0D3B30),
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
@@ -255,34 +246,42 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildPaymentOption(String title, IconData icon, bool isSelected) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isSelected ? const Color(0xFFE6F2F0) : AppTheme.surfaceColor,
+        color: isSelected ? (isDark ? AppTheme.primaryColor : const Color(0xFFE6F2F0)) : Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isSelected ? AppTheme.primaryColor : Colors.grey.shade200),
+        border: Border.all(color: isSelected ? AppTheme.primaryColor : (isDark ? Colors.white10 : Colors.grey.shade200)),
       ),
       child: Row(
         children: [
-          Icon(icon, color: isSelected ? AppTheme.primaryColor : Colors.grey),
+          Icon(icon, color: isSelected ? Colors.white : (isDark ? Colors.white38 : Colors.grey)),
           const SizedBox(width: 12),
-          Text(title, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+          Text(
+            title, 
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+            )
+          ),
           const Spacer(),
-          if (isSelected) const Icon(Icons.check_circle, color: AppTheme.primaryColor, size: 20),
+          if (isSelected) const Icon(Icons.check_circle, color: Colors.white, size: 20),
         ],
       ),
     );
   }
 
   Widget _buildSummaryRow(String label, String value, {bool isBold = false}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: isBold ? (label.contains('Credit') ? Colors.green : Colors.black) : Colors.grey)),
-          Text(value, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: isBold ? FontWeight.bold : FontWeight.normal, fontSize: isBold ? 16 : 14, color: label.contains('Credit') ? Colors.green : null)),
+          Text(label, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: isBold ? (isDark ? Colors.white : Colors.black) : (isDark ? Colors.white38 : Colors.grey))),
+          Text(value, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: isBold ? FontWeight.bold : FontWeight.normal, fontSize: isBold ? 16 : 14, color: label.contains('Credit') ? Colors.green : (isDark ? Colors.white : null))),
         ],
       ),
     );
@@ -297,6 +296,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Widget _buildWalletOption() {
     final userProvider = Provider.of<UserProvider>(context);
     final balance = userProvider.user?.walletBalance ?? 0.0;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     
     if (balance <= 0) return const SizedBox.shrink();
 
@@ -308,9 +308,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: _useWallet ? const Color(0xFFE6F2F0) : AppTheme.surfaceColor,
+            color: _useWallet ? (isDark ? AppTheme.primaryColor : const Color(0xFFE6F2F0)) : Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _useWallet ? AppTheme.primaryColor : Colors.grey.shade200),
+            border: Border.all(color: _useWallet ? AppTheme.primaryColor : (isDark ? Colors.white10 : Colors.grey.shade200)),
           ),
           child: Row(
             children: [
@@ -320,15 +320,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Use Wallet Balance', style: TextStyle(fontWeight: FontWeight.bold)),
-                    Text('Available: KSh ${balance.toStringAsFixed(2)}', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                    Text('Use Wallet Balance', style: TextStyle(fontWeight: FontWeight.bold, color: _useWallet && isDark ? Colors.white : (isDark ? Colors.white : Colors.black))),
+                    Text('Available: KSh ${balance.toStringAsFixed(2)}', style: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade600, fontSize: 12)),
                   ],
                 ),
               ),
               Switch(
                 value: _useWallet, 
                 onChanged: (val) => setState(() => _useWallet = val),
-                activeColor: AppTheme.primaryColor,
+                activeColor: Colors.white,
+                activeTrackColor: Colors.green,
               ),
             ],
           ),

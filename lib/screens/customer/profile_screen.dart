@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
@@ -10,6 +11,7 @@ import 'saved_addresses_screen.dart';
 import 'payment_methods_screen.dart';
 import 'favourites_screen.dart';
 import 'support_legal_screen.dart';
+import 'legal_content_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -46,9 +48,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final userProvider = Provider.of<UserProvider>(context);
     final authProvider = Provider.of<AuthProvider>(context);
     final user = userProvider.user;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
@@ -57,10 +60,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               children: [
                 if (userProvider.isLoading && user == null)
-                  const Padding(
-                    padding: EdgeInsets.all(50),
-                    child: Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)),
-                  )
+                  _buildProfileSkeletons(context)
                 else if (userProvider.error != null && user == null)
                    Padding(
                     padding: const EdgeInsets.all(50),
@@ -80,41 +80,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildMenuCard([
                     _buildMenuItem(Icons.shopping_bag_outlined, 'My Orders', onTap: () => Navigator.pushNamed(context, '/orders')),
                     _buildMenuItem(Icons.favorite_outline_rounded, 'My Favourites', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FavouritesScreen()))),
-                    _buildMenuItem(Icons.star_outline_rounded, 'Rate the App'),
+                    _buildMenuItem(Icons.star_outline_rounded, 'Rate the App', onTap: () => _showFeedbackDialog(context)),
                   ]),
                   _buildSectionTitle('Support & Legal'),
                   _buildMenuCard([
                     _buildMenuItem(Icons.headset_mic_outlined, 'Help & Support', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SupportLegalScreen()))),
-                    _buildMenuItem(Icons.info_outline_rounded, 'About TipsyTheoryy'),
-                    _buildMenuItem(Icons.privacy_tip_outlined, 'Privacy Policy'),
+                    _buildMenuItem(Icons.info_outline_rounded, 'About TipsyTheoryy', onTap: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const LegalContentScreen(
+                        title: 'About TipsyTheoryy',
+                        content: 'TipsyTheoryy is your ultimate destination for premium spirits, wines, and beers delivered right to your doorstep. We partner with verified merchants to ensure quality and authenticity in every sip.',
+                      )));
+                    }),
+                    _buildMenuItem(Icons.privacy_tip_outlined, 'Privacy Policy', onTap: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const LegalContentScreen(
+                        title: 'Privacy Policy',
+                        content: 'At TipsyTheoryy, your privacy is our priority. We collect minimal data to provide our services and ensure your orders reach you safely... [Full Policy Content Here]',
+                      )));
+                    }),
                   ]),
-                  const SizedBox(height: 24),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 55,
-                      child: ElevatedButton(
-                        onPressed: () => _showLogoutDialog(context, authProvider),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.redAccent,
-                          elevation: 0,
-                          side: const BorderSide(color: Colors.redAccent, width: 1.5),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.logout_rounded),
-                            SizedBox(width: 12),
-                            Text('Logout', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 120), // Extra spacing to ensure last items aren't blocked by floating nav
                 ],
               ],
             ),
@@ -126,9 +110,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildCollapsingHeader(UserModel? user, UserProvider provider) {
     final topPadding = MediaQuery.of(context).padding.top;
-    const collapsedHeight = 60.0;
-    const expandedContentHeight = 195.0;
+    const collapsedHeight = 56.0;
+    const expandedContentHeight = 140.0;
     final expandedHeight = topPadding + expandedContentHeight;
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     return SliverAppBar(
       pinned: true,
@@ -137,6 +122,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
       backgroundColor: AppTheme.primaryColor,
       elevation: 0,
       automaticallyImplyLeading: false,
+      actions: [
+        IconButton(
+          onPressed: () => authProvider.toggleTheme(),
+          icon: Icon(
+            authProvider.themeMode == ThemeMode.dark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+            color: Colors.white,
+            size: 20,
+          ),
+          tooltip: 'Toggle Theme',
+        ),
+        IconButton(
+          onPressed: () => _showLogoutDialog(context, authProvider),
+          icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 20),
+          tooltip: 'Logout',
+        ),
+        const SizedBox(width: 8),
+      ],
       flexibleSpace: LayoutBuilder(
         builder: (context, constraints) {
           final minHeight = collapsedHeight + topPadding;
@@ -167,14 +169,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         opacity: (1 - expandRatio * 2).clamp(0.0, 1.0),
                         child: Row(
                           children: [
-                            _buildProfileAvatar(user, provider, radius: 22, showCamera: false),
+                            _buildProfileAvatar(user, provider, radius: 18, showCamera: false),
                             const SizedBox(width: 14),
                             Expanded(
                               child: Text(
                                 user?.fullName.isNotEmpty == true ? user!.fullName : 'Welcome Back',
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 17,
+                                  fontSize: 16,
                                   fontWeight: FontWeight.w900,
                                 ),
                                 maxLines: 1,
@@ -199,20 +201,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: SingleChildScrollView(
                             physics: const NeverScrollableScrollPhysics(),
                             child: Padding(
-                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  _buildProfileAvatar(user, provider, radius: 42, showCamera: true),
-                                  const SizedBox(height: 12),
+                                  _buildProfileAvatar(user, provider, radius: 32, showCamera: true),
+                                  const SizedBox(height: 10),
                                   Text(
                                     user?.fullName.isNotEmpty == true ? user!.fullName : 'Welcome Back',
-                                    style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+                                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: -0.5),
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
                                     user?.email ?? '',
-                                    style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13, fontWeight: FontWeight.w600),
+                                    style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12, fontWeight: FontWeight.w600),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -254,7 +256,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       width: size,
                       height: size,
                       fit: BoxFit.cover,
-                      placeholder: (context, url) => const CircularProgressIndicator(strokeWidth: 2),
+                      placeholder: (context, url) => Shimmer.fromColors(
+                        baseColor: Colors.grey.shade100,
+                        highlightColor: Colors.white,
+                        child: Container(color: Colors.white),
+                      ),
                       errorWidget: (context, url, error) => Icon(Icons.person, size: radius, color: AppTheme.primaryColor),
                     )
                   : Icon(Icons.person, size: radius, color: AppTheme.primaryColor),
@@ -283,8 +289,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildLoyaltyCard(int points, UserProvider provider) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFFC5A059), Color(0xFFA67C00)],
@@ -324,14 +330,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildWalletCard(double balance) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.green.withValues(alpha: 0.2)),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)],
+        color: isDark ? Theme.of(context).cardColor : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.green.withValues(alpha: isDark ? 0.3 : 0.2)),
+        boxShadow: isDark ? [] : [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)],
       ),
       child: Row(
         children: [
@@ -359,7 +366,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildSectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
       child: Align(
         alignment: Alignment.centerLeft,
         child: Text(
@@ -371,12 +378,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildMenuCard(List<Widget> items) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 5))],
+        color: isDark ? Theme.of(context).cardColor : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: isDark ? [] : [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Material(
         color: Colors.transparent,
@@ -386,16 +394,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildMenuItem(IconData icon, String title, {VoidCallback? onTap}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ListTile(
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
       leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(10)),
-        child: Icon(icon, color: AppTheme.primaryColor, size: 22),
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(8)),
+        child: Icon(icon, color: AppTheme.primaryColor, size: 20),
       ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: Color(0xFF1E293B))),
-      trailing: Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400),
+      title: Text(title, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: isDark ? Colors.white : const Color(0xFF1E293B))),
+      trailing: Icon(Icons.chevron_right_rounded, color: isDark ? Colors.white24 : Colors.grey.shade400, size: 20),
     );
   }
 
@@ -425,23 +434,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final points = provider.user?.loyaltyPoints ?? 0;
     final value = points / 100;
     final canRedeem = points >= 1000;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.workspace_premium_rounded, color: Color(0xFFC5A059)),
-            SizedBox(width: 10),
-            Text('Redeem Points', style: TextStyle(fontWeight: FontWeight.w900, color: AppTheme.primaryColor)),
+            const Icon(Icons.workspace_premium_rounded, color: Color(0xFFC5A059)),
+            const SizedBox(width: 10),
+            Text('Redeem Points', style: TextStyle(fontWeight: FontWeight.w900, color: isDark ? Colors.white : AppTheme.primaryColor)),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Available: $points Points', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text('Available: $points Points', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isDark ? Colors.white70 : Colors.black87)),
             const SizedBox(height: 8),
             Text('Cash Value: KSh ${value.toStringAsFixed(2)}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w900, fontSize: 18)),
             const SizedBox(height: 20),
@@ -449,12 +460,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               canRedeem 
                 ? 'Would you like to convert all your points into Tipsy Credit?' 
                 : 'You need at least 1,000 points to redeem. Keep ordering to earn more!',
-              style: TextStyle(color: Colors.grey.shade600),
+              style: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade600),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CLOSE', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('CLOSE', style: TextStyle(color: isDark ? Colors.white38 : Colors.grey, fontWeight: FontWeight.bold))),
           if (canRedeem)
             ElevatedButton(
               onPressed: () async {
@@ -477,29 +488,78 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  void _showFeedbackDialog(BuildContext context) {
+    final controller = TextEditingController();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text('Rate your experience', style: TextStyle(fontWeight: FontWeight.w900, color: isDark ? Colors.white : AppTheme.primaryColor)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('We are not on the App Store yet, but we\'d love to hear your feedback!', style: TextStyle(color: isDark ? Colors.white70 : Colors.black87)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              maxLines: 3,
+              style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+              decoration: InputDecoration(
+                hintText: 'Tell us what you think...',
+                hintStyle: TextStyle(color: isDark ? Colors.white24 : Colors.grey),
+                filled: true,
+                fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('CANCEL', style: TextStyle(color: isDark ? Colors.white38 : Colors.grey, fontWeight: FontWeight.bold))),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Thank you for your feedback!'), backgroundColor: Colors.green),
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+            child: const Text('SUBMIT'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showEditProfile(BuildContext context, UserProvider provider) {
     final firstNameController = TextEditingController(text: provider.user?.firstName);
     final lastNameController = TextEditingController(text: provider.user?.lastName);
     final phoneController = TextEditingController(text: provider.user?.phone);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
-      builder: (context) => Padding(
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
         padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 24, right: 24, top: 24),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Edit Profile', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppTheme.primaryColor)),
+            Text('Edit Profile', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: isDark ? Colors.white : AppTheme.primaryColor)),
             const SizedBox(height: 24),
-            _buildTextField('First Name', firstNameController),
+            _buildTextField('First Name', firstNameController, isDark),
             const SizedBox(height: 16),
-            _buildTextField('Last Name', lastNameController),
+            _buildTextField('Last Name', lastNameController, isDark),
             const SizedBox(height: 16),
-            _buildTextField('Phone Number', phoneController),
+            _buildTextField('Phone Number', phoneController, isDark),
             const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
@@ -529,21 +589,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller) {
+  Widget _buildTextField(String label, TextEditingController controller, bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.primaryColor)),
+        Text(label, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: isDark ? Colors.white38 : AppTheme.primaryColor)),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
+          style: TextStyle(color: isDark ? Colors.white : Colors.black87),
           decoration: InputDecoration(
             filled: true,
-            fillColor: Colors.grey.shade50,
+            fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildProfileSkeletons(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseColor = isDark ? AppTheme.darkShimmerBase : AppTheme.shimmerBase;
+    final highlightColor = isDark ? AppTheme.darkShimmerHighlight : AppTheme.shimmerHighlight;
+
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          Shimmer.fromColors(
+            baseColor: baseColor,
+            highlightColor: highlightColor,
+            child: Container(
+              height: 100,
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+            ),
+          ),
+          const SizedBox(height: 20),
+          ...List.generate(3, (i) => Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: Shimmer.fromColors(
+              baseColor: baseColor,
+              highlightColor: highlightColor,
+              child: Container(
+                height: 60,
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+              ),
+            ),
+          )),
+        ],
+      ),
     );
   }
 }

@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../core/api_client.dart';
 import '../models/user_model.dart';
 
@@ -11,9 +13,27 @@ class UserProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
+  UserProvider() {
+    _loadCachedProfile();
+  }
+
   UserModel? get user => _user;
   bool get isLoading => _isLoading;
   String? get error => _error;
+
+  Future<void> _loadCachedProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cachedData = prefs.getString('user_profile');
+    if (cachedData != null) {
+      _user = UserModel.fromJson(jsonDecode(cachedData));
+      notifyListeners();
+    }
+  }
+
+  Future<void> _cacheProfile(UserModel user) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_profile', jsonEncode(user.toJson()));
+  }
 
   Future<void> fetchProfile() async {
     _isLoading = true;
@@ -23,6 +43,8 @@ class UserProvider with ChangeNotifier {
     try {
       // Determine endpoint based on role stored in secure storage
       final role = await _storage.read(key: 'role');
+      if (role == null) return; // Guard: No role, no request
+
       String endpoint = 'customer/profile/';
       if (role == 'rider') {
         endpoint = 'rider/profile/';
@@ -31,6 +53,7 @@ class UserProvider with ChangeNotifier {
       final response = await _apiClient.get(endpoint);
       if (response.statusCode == 200) {
         _user = UserModel.fromJson(response.data);
+        _cacheProfile(_user!);
       }
     } catch (e) {
       _error = "Failed to load profile";
@@ -47,6 +70,8 @@ class UserProvider with ChangeNotifier {
 
     try {
       final role = await _storage.read(key: 'role');
+      if (role == null) return false;
+
       String endpoint = 'customer/profile/';
       if (role == 'rider') {
         endpoint = 'rider/profile/';
@@ -69,6 +94,7 @@ class UserProvider with ChangeNotifier {
       
       if (response.statusCode == 200) {
         _user = UserModel.fromJson(response.data);
+        _cacheProfile(_user!);
         return true;
       }
     } catch (e) {

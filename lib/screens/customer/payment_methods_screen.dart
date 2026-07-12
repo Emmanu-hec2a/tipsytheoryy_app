@@ -7,7 +7,7 @@ class PaymentMethodsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: AppTheme.primaryColor,
         title: const Text('Payment Methods', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
@@ -23,12 +23,12 @@ class PaymentMethodsScreen extends StatelessWidget {
           children: [
             const Text('PRIMARY METHOD', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 1.2)),
             const SizedBox(height: 16),
-            _buildPaymentCard('M-Pesa', 'STK Push enabled', Icons.phone_android, isEnabled: true),
+            _buildPaymentCard(context, 'M-Pesa', 'STK Push enabled', Icons.phone_android, isEnabled: true),
             const SizedBox(height: 24),
             const Text('OTHER METHODS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 1.2)),
             const SizedBox(height: 16),
-            _buildPaymentCard('Cash on Delivery', 'Pay at your doorstep', Icons.money, isEnabled: false),
-            _buildPaymentCard('Credit Card', 'Coming soon', Icons.credit_card, isEnabled: false),
+            _buildPaymentCard(context, 'Cash on Delivery', 'Pay at your doorstep', Icons.money, isEnabled: false),
+            _buildPaymentCard(context, 'Credit Card', 'Coming soon', Icons.credit_card, isEnabled: false),
             const Spacer(),
             const Center(
               child: Text(
@@ -43,14 +43,15 @@ class PaymentMethodsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPaymentCard(String title, String subtitle, IconData icon, {required bool isEnabled}) {
+  Widget _buildPaymentCard(BuildContext context, String title, String subtitle, IconData icon, {required bool isEnabled}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? Theme.of(context).cardColor : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: isEnabled ? Border.all(color: Colors.green.shade200) : null,
+        border: isEnabled ? Border.all(color: Colors.green.shade200) : (isDark ? Border.all(color: Colors.white10) : null),
       ),
       child: Row(
         children: [
@@ -64,15 +65,15 @@ class PaymentMethodsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-                Text(subtitle, style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.bold)),
+                Text(title, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: isDark ? Colors.white : Colors.black87)),
+                Text(subtitle, style: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
           if (isEnabled)
             const Icon(Icons.check_circle, color: Colors.green)
           else
-            const Icon(Icons.lock_outline, color: Colors.grey, size: 18),
+            Icon(Icons.lock_outline, color: isDark ? Colors.white24 : Colors.grey, size: 18),
         ],
       ),
     );

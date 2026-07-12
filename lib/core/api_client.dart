@@ -1,15 +1,26 @@
 import 'package:dio/dio.dart';
+import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiClient {
   final Dio dio;
   final FlutterSecureStorage storage = const FlutterSecureStorage();
-  
+
+  // Global cache store to be shared across ApiClient instances
+  static final _cacheStore = MemCacheStore();
+  static final _cacheOptions = CacheOptions(
+    store: _cacheStore,
+    policy: CachePolicy.refreshForceCache, // Tries to fetch from network, falls back to cache on error
+    hitCacheOnErrorExcept: [401, 403],
+    maxStale: const Duration(days: 7),
+    priority: CachePriority.normal,
+  );
+
   // Use 10.0.2.2 for Android Emulator to hit localhost
   // Use localhost for iOS Simulator
   // static const String baseUrl = 'https://tipsytheoryy.com/api/v1/';
   // If 10.0.2.2 fails, try the actual machine IP or ensure Django is running on 0.0.0.0
-  static const String baseUrl = 'http://192.168.0.71:8000/api/v1/';
+  static const String baseUrl = 'http://192.168.0.15:8000/api/v1/';
 
   ApiClient() : dio = Dio(BaseOptions(
     baseUrl: baseUrl,
@@ -35,7 +46,10 @@ class ApiClient {
         return handler.next(e);
       },
     ));
-    
+
+    // Add cache interceptor
+    dio.interceptors.add(DioCacheInterceptor(options: _cacheOptions));
+
     // Add logging in debug mode
     dio.interceptors.add(LogInterceptor(responseBody: true, requestBody: true));
   }

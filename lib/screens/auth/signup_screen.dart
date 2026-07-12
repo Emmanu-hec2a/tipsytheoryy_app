@@ -92,9 +92,10 @@ class _SignupScreenState extends State<SignupScreen> {
   Widget build(BuildContext context) {
     final isRider = widget.role == 'rider';
     final authProvider = Provider.of<AuthProvider>(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -143,77 +144,92 @@ class _SignupScreenState extends State<SignupScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 20),
-                    _buildLabel('Full Name'),
+                    _buildLabel('Full Name', isDark),
                     TextFormField(
                       controller: _nameController,
-                      decoration: const InputDecoration(
+                      style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                      decoration: InputDecoration(
                         hintText: 'Enter your full name',
-                        prefixIcon: Icon(Icons.person_outline, size: 20),
+                        hintStyle: TextStyle(color: isDark ? Colors.white24 : null),
+                        fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : null,
+                        prefixIcon: Icon(Icons.person_outline, size: 20, color: isDark ? Colors.white38 : null),
                       ),
                       validator: (val) => val == null || val.isEmpty ? 'Required' : null,
                     ),
                     
                     const SizedBox(height: 12),
-                    _buildLabel('Email Address'),
+                    _buildLabel('Email Address', isDark),
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
+                      style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                      decoration: InputDecoration(
                         hintText: 'Enter your email address',
-                        prefixIcon: Icon(Icons.email_outlined, size: 20),
+                        hintStyle: TextStyle(color: isDark ? Colors.white24 : null),
+                        fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : null,
+                        prefixIcon: Icon(Icons.email_outlined, size: 20, color: isDark ? Colors.white38 : null),
                       ),
                       validator: (val) => val == null || val.isEmpty ? 'Required' : null,
                     ),
                     
                     const SizedBox(height: 12),
-                    _buildLabel('Phone Number'),
+                    _buildLabel('Phone Number', isDark),
                     TextFormField(
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
+                      style: TextStyle(color: isDark ? Colors.white : Colors.black87),
                       decoration: InputDecoration(
                         hintText: 'Enter your phone number',
-                        prefixIcon: const Icon(Icons.phone_outlined, size: 20),
+                        hintStyle: TextStyle(color: isDark ? Colors.white24 : null),
+                        fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : null,
+                        prefixIcon: Icon(Icons.phone_outlined, size: 20, color: isDark ? Colors.white38 : null),
                         prefix: Container(
                           padding: const EdgeInsets.only(right: 8),
-                          child: const Text('+254', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+                          child: Text('+254', style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white70 : Colors.black)),
                         ),
                       ),
                       validator: (val) => val == null || val.isEmpty ? 'Required' : null,
                     ),
                     
                     const SizedBox(height: 12),
-                    _buildLabel('Password'),
+                    _buildLabel('Password', isDark),
                     TextFormField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
+                      style: TextStyle(color: isDark ? Colors.white : Colors.black87),
                       decoration: InputDecoration(
                         hintText: 'Create a password',
-                        prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                        hintStyle: TextStyle(color: isDark ? Colors.white24 : null),
+                        fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : null,
+                        prefixIcon: Icon(Icons.lock_outline, size: 20, color: isDark ? Colors.white38 : null),
                         suffixIcon: IconButton(
-                          icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
+                          icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20, color: isDark ? Colors.white38 : null),
                           onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                         ),
                       ),
                       validator: (val) => val == null || val.length < 8 ? 'Min 8 characters' : null,
                     ),
-                    const Padding(
-                      padding: EdgeInsets.only(top: 4, left: 4),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4, left: 4),
                       child: Text(
                         'At least 8 characters with a number and symbol',
-                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                        style: TextStyle(fontSize: 11, color: isDark ? Colors.white24 : Colors.grey),
                       ),
                     ),
                     
                     const SizedBox(height: 12),
-                    _buildLabel('Confirm Password'),
+                    _buildLabel('Confirm Password', isDark),
                     TextFormField(
                       controller: _confirmPasswordController,
                       obscureText: _obscureConfirmPassword,
+                      style: TextStyle(color: isDark ? Colors.white : Colors.black87),
                       decoration: InputDecoration(
                         hintText: 'Confirm your password',
-                        prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                        hintStyle: TextStyle(color: isDark ? Colors.white24 : null),
+                        fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : null,
+                        prefixIcon: Icon(Icons.lock_outline, size: 20, color: isDark ? Colors.white38 : null),
                         suffixIcon: IconButton(
-                          icon: Icon(_obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
+                          icon: Icon(_obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20, color: isDark ? Colors.white38 : null),
                           onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
                         ),
                       ),
@@ -222,12 +238,16 @@ class _SignupScreenState extends State<SignupScreen> {
                     
                     if (!isRider) ...[
                       const SizedBox(height: 12),
-                      _buildLabel('Location'),
+                      _buildLabel('Location', isDark),
                       DropdownButtonFormField<String>(
                         value: _selectedLocation,
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.location_on_outlined, size: 20),
+                        dropdownColor: isDark ? Theme.of(context).cardColor : Colors.white,
+                        style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                        decoration: InputDecoration(
+                          prefixIcon: Icon(Icons.location_on_outlined, size: 20, color: isDark ? Colors.white38 : null),
                           hintText: 'Select your area',
+                          hintStyle: TextStyle(color: isDark ? Colors.white24 : null),
+                          fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : null,
                         ),
                         items: _locations.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
                         onChanged: (val) => setState(() => _selectedLocation = val),
@@ -237,12 +257,16 @@ class _SignupScreenState extends State<SignupScreen> {
 
                     if (isRider) ...[
                       const SizedBox(height: 12),
-                      _buildLabel('Vehicle Type'),
+                      _buildLabel('Vehicle Type', isDark),
                       DropdownButtonFormField<String>(
                         value: _selectedVehicleType,
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.motorcycle_outlined, size: 20),
+                        dropdownColor: isDark ? Theme.of(context).cardColor : Colors.white,
+                        style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                        decoration: InputDecoration(
+                          prefixIcon: Icon(Icons.motorcycle_outlined, size: 20, color: isDark ? Colors.white38 : null),
                           hintText: 'Select vehicle type',
+                          hintStyle: TextStyle(color: isDark ? Colors.white24 : null),
+                          fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : null,
                         ),
                         items: _vehicleTypes.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
                         onChanged: (val) => setState(() => _selectedVehicleType = val),
@@ -250,12 +274,15 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                       
                       const SizedBox(height: 12),
-                      _buildLabel('Vehicle Registration'),
+                      _buildLabel('Vehicle Registration', isDark),
                       TextFormField(
                         controller: _regController,
-                        decoration: const InputDecoration(
+                        style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                        decoration: InputDecoration(
                           hintText: 'Registration number',
-                          prefixIcon: Icon(Icons.app_registration, size: 20),
+                          hintStyle: TextStyle(color: isDark ? Colors.white24 : null),
+                          fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : null,
+                          prefixIcon: Icon(Icons.app_registration, size: 20, color: isDark ? Colors.white38 : null),
                         ),
                         validator: (val) => val == null || val.isEmpty ? 'Required' : null,
                       ),
@@ -286,14 +313,14 @@ class _SignupScreenState extends State<SignupScreen> {
                       child: GestureDetector(
                         onTap: () => Navigator.pop(context),
                         child: RichText(
-                          text: const TextSpan(
-                            style: TextStyle(color: Colors.black54, fontSize: 14),
+                          text: TextSpan(
+                            style: TextStyle(color: isDark ? Colors.white38 : Colors.black54, fontSize: 14),
                             children: [
-                              TextSpan(text: 'Already have an account? '),
+                              const TextSpan(text: 'Already have an account? '),
                               TextSpan(
                                 text: 'Sign In',
                                 style: TextStyle(
-                                  color: AppTheme.primaryColor,
+                                  color: isDark ? AppTheme.accentColor : AppTheme.primaryColor,
                                   fontWeight: FontWeight.bold,
                                   decoration: TextDecoration.underline,
                                 ),
@@ -314,10 +341,10 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  Widget _buildLabel(String text) {
+  Widget _buildLabel(String text, bool isDark) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
-      child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87)),
+      child: Text(text, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isDark ? Colors.white70 : Colors.black87)),
     );
   }
 }

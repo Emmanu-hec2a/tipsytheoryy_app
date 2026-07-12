@@ -52,10 +52,14 @@ class TipsyTheoryyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    
     return MaterialApp(
       title: 'TipsyTheoryy',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: authProvider.themeMode,
       home: const AuthWrapper(),
       routes: {
         '/cart': (context) => const CartScreen(),

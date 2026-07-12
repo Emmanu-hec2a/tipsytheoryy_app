@@ -13,12 +13,14 @@ class DeliveryDetailsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final riderProvider = Provider.of<RiderProvider>(context);
     final order = riderProvider.orderQueue.firstWhere((o) => o.id == orderId, orElse: () => throw Exception('Order not found'));
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: AppTheme.primaryColor,
         elevation: 0,
+        centerTitle: true,
         title: Text('Task #${order.orderNumber}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -34,16 +36,16 @@ class DeliveryDetailsScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('ROUTE DETAILS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 1.2)),
+                  Text('ROUTE DETAILS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: isDark ? Colors.white38 : Colors.grey, letterSpacing: 1.2)),
                   const SizedBox(height: 16),
-                  _buildAddressCard(Icons.storefront_rounded, 'Pickup Point', 'Merchant Shop Location', isPickup: true),
-                  _buildRouteConnector(),
-                  _buildAddressCard(Icons.location_on_rounded, 'Drop-off Point', order.addressString ?? 'Customer Address'),
+                  _buildAddressCard(context, Icons.storefront_rounded, 'Pickup Point', 'Merchant Shop Location', isPickup: true),
+                  _buildRouteConnector(context),
+                  _buildAddressCard(context, Icons.location_on_rounded, 'Drop-off Point', order.addressString ?? 'Customer Address'),
                   
                   const SizedBox(height: 32),
-                  const Text('ORDER SUMMARY', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 1.2)),
+                  Text('ORDER SUMMARY', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: isDark ? Colors.white38 : Colors.grey, letterSpacing: 1.2)),
                   const SizedBox(height: 16),
-                  _buildSummaryCard(order),
+                  _buildSummaryCard(context, order),
                   
                   const SizedBox(height: 40),
                   
@@ -79,12 +81,12 @@ class DeliveryDetailsScreen extends StatelessWidget {
                         }
                       },
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppTheme.primaryColor, width: 2),
+                        side: BorderSide(color: isDark ? AppTheme.accentColor : AppTheme.primaryColor, width: 2),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
                       child: Text(
                         _getNextStatusAction(order.status),
-                        style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w900, letterSpacing: 1),
+                        style: TextStyle(color: isDark ? AppTheme.accentColor : AppTheme.primaryColor, fontWeight: FontWeight.w900, letterSpacing: 1),
                       ),
                     ),
                   ),
@@ -120,13 +122,14 @@ class DeliveryDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAddressCard(IconData icon, String label, String address, {bool isPickup = false}) {
+  Widget _buildAddressCard(BuildContext context, IconData icon, String label, String address, {bool isPickup = false}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: isDark ? Theme.of(context).cardColor : const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade100),
+        border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade100),
       ),
       child: Row(
         children: [
@@ -136,9 +139,9 @@ class DeliveryDetailsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.grey)),
+                Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: isDark ? Colors.white38 : Colors.grey)),
                 const SizedBox(height: 4),
-                Text(address, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF1E293B))),
+                Text(address, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: isDark ? Colors.white70 : const Color(0xFF1E293B))),
               ],
             ),
           ),
@@ -147,39 +150,42 @@ class DeliveryDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRouteConnector() {
+  Widget _buildRouteConnector(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(left: 33),
       height: 20,
-      child: CustomPaint(painter: _DashedLinePainter()),
+      child: CustomPaint(painter: _DashedLinePainter(color: isDark ? Colors.white10 : Colors.grey.shade300)),
     );
   }
 
-  Widget _buildSummaryCard(OrderModel order) {
+  Widget _buildSummaryCard(BuildContext context, OrderModel order) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? Theme.of(context).cardColor : Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.grey.shade100),
+        border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade100),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildSummaryItem('EST. EARNING', 'KSh ${order.deliveryFee.toStringAsFixed(0)}'),
-          _buildSummaryItem('TOTAL VALUE', 'KSh ${order.total.toStringAsFixed(0)}'),
-          _buildSummaryItem('ITEMS', '${order.itemCount} Units'),
+          _buildSummaryItem(context, 'EST. EARNING', 'KSh ${order.deliveryFee.toStringAsFixed(0)}'),
+          _buildSummaryItem(context, 'TOTAL VALUE', 'KSh ${order.total.toStringAsFixed(0)}'),
+          _buildSummaryItem(context, 'ITEMS', '${order.itemCount} Units'),
         ],
       ),
     );
   }
 
-  Widget _buildSummaryItem(String label, String value) {
+  Widget _buildSummaryItem(BuildContext context, String label, String value) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       children: [
-        Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 0.5)),
+        Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: isDark ? Colors.white24 : Colors.grey, letterSpacing: 0.5)),
         const SizedBox(height: 4),
-        Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppTheme.primaryColor)),
+        Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: isDark ? Colors.white : AppTheme.primaryColor)),
       ],
     );
   }
@@ -214,9 +220,12 @@ class DeliveryDetailsScreen extends StatelessWidget {
 }
 
 class _DashedLinePainter extends CustomPainter {
+  final Color color;
+  _DashedLinePainter({required this.color});
+
   @override
   void paint(Canvas canvas, Size size) {
-    var paint = Paint()..color = Colors.grey.shade300..strokeWidth = 2;
+    var paint = Paint()..color = color..strokeWidth = 2;
     var max = size.height;
     var dashWidth = 4;
     var dashSpace = 4;

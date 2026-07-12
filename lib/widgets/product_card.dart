@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 import '../core/theme.dart';
 import '../models/product_model.dart';
 
@@ -16,17 +18,19 @@ class ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Container(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return RepaintBoundary(
+      child: Stack(
+        children: [
+          Container(
           width: double.infinity,
           padding: const EdgeInsets.all(12), // Reduced padding slightly to save space
           margin: EdgeInsets.only(bottom: isVertical ? 12 : 0),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? Theme.of(context).cardColor : Colors.white,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.grey.shade100),
-            boxShadow: [
+            border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade100),
+            boxShadow: isDark ? [] : [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.02),
                 blurRadius: 10,
@@ -41,15 +45,24 @@ class ProductCard extends StatelessWidget {
                 width: 90,
                 height: 90,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
+                  color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(12),
-                  image: product.image != null
-                    ? DecorationImage(image: NetworkImage(product.image!), fit: BoxFit.cover)
-                    : null,
                 ),
-                child: product.image == null
-                  ? Icon(Icons.wine_bar, color: AppTheme.primaryColor.withValues(alpha: 0.2), size: 30)
-                  : null,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: product.image != null
+                    ? CachedNetworkImage(
+                        imageUrl: product.image!,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Shimmer.fromColors(
+                          baseColor: isDark ? Colors.white10 : Colors.grey.shade100,
+                          highlightColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
+                          child: Container(color: Colors.white),
+                        ),
+                        errorWidget: (context, url, error) => Icon(Icons.wine_bar, color: isDark ? Colors.white10 : AppTheme.primaryColor.withValues(alpha: 0.2), size: 30),
+                      )
+                    : Icon(Icons.wine_bar, color: isDark ? Colors.white10 : AppTheme.primaryColor.withValues(alpha: 0.2), size: 30),
+                ),
               ),
               const SizedBox(width: 12),
 
@@ -61,10 +74,10 @@ class ProductCard extends StatelessWidget {
                   children: [
                     Text(
                       product.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w900,
                         fontSize: 15,
-                        color: AppTheme.primaryColor,
+                        color: isDark ? Colors.white : AppTheme.primaryColor,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -72,7 +85,7 @@ class ProductCard extends StatelessWidget {
                     Text(
                       product.category ?? 'Beverage',
                       style: TextStyle(
-                        color: Colors.grey.shade400,
+                        color: isDark ? Colors.white38 : Colors.grey.shade400,
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                       ),
@@ -83,10 +96,10 @@ class ProductCard extends StatelessWidget {
                       children: [
                         Text(
                           'KSh ${product.price.toStringAsFixed(0)}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.w900,
                             fontSize: 16,
-                            color: Color(0xFF0D3B30),
+                            color: isDark ? Colors.white : const Color(0xFF0D3B30),
                           ),
                         ),
 
@@ -96,7 +109,9 @@ class ProductCard extends StatelessWidget {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                             decoration: BoxDecoration(
-                              color: product.isAvailable ? const Color(0xFFF1F5F9) : Colors.grey.shade100,
+                              color: product.isAvailable 
+                                ? (isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF1F5F9)) 
+                                : (isDark ? Colors.white.withValues(alpha: 0.02) : Colors.grey.shade100),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Row(
@@ -104,13 +119,17 @@ class ProductCard extends StatelessWidget {
                                 Icon(
                                   product.isAvailable ? Icons.add_shopping_cart : Icons.block, 
                                   size: 14, 
-                                  color: product.isAvailable ? Colors.grey.shade700 : Colors.grey.shade400
+                                  color: product.isAvailable 
+                                    ? (isDark ? Colors.white70 : Colors.grey.shade700) 
+                                    : (isDark ? Colors.white10 : Colors.grey.shade400)
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
                                   product.isAvailable ? 'Add' : 'Sold Out',
                                   style: TextStyle(
-                                    color: product.isAvailable ? Colors.grey.shade700 : Colors.grey.shade400,
+                                    color: product.isAvailable 
+                                      ? (isDark ? Colors.white70 : Colors.grey.shade700) 
+                                      : (isDark ? Colors.white10 : Colors.grey.shade400),
                                     fontWeight: FontWeight.w900,
                                     fontSize: 11,
                                   ),
@@ -154,6 +173,7 @@ class ProductCard extends StatelessWidget {
             ),
           ),
       ],
+    ),
     );
   }
 }

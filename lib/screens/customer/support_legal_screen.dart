@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme.dart';
+import 'legal_content_screen.dart';
 
 class SupportLegalScreen extends StatelessWidget {
   const SupportLegalScreen({super.key});
@@ -8,7 +9,7 @@ class SupportLegalScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: AppTheme.primaryColor,
         title: const Text('Support & Legal', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
@@ -21,15 +22,31 @@ class SupportLegalScreen extends StatelessWidget {
         child: Column(
           children: [
             const SizedBox(height: 24),
-            _buildSection('GET IN TOUCH', [
-              _buildLegalItem(Icons.headset_mic_rounded, 'Help Center', 'Speak with our support team', () {}),
-              _buildLegalItem(Icons.mail_outline_rounded, 'Email Support', 'support@tipsytheoryy.com', () => _launchEmail()),
-              _buildLegalItem(Icons.phone_outlined, 'Call Us', '+254 700 000000', () => _launchPhone()),
+            _buildSection(context, 'GET IN TOUCH', [
+              _buildLegalItem(context, Icons.chat_bubble_outline_rounded, 'WhatsApp Support', 'Instant help via WhatsApp', () => _launchWhatsApp()),
+              _buildLegalItem(context, Icons.headset_mic_outlined, 'Help Center', 'Speak with our support team', () {}),
+              _buildLegalItem(context, Icons.mail_outline_rounded, 'Email Support', 'support@tipsytheoryy.com', () => _launchEmail()),
+              _buildLegalItem(context, Icons.phone_outlined, 'Call Us', '+254 700 000000', () => _launchPhone()),
             ]),
-            _buildSection('LEGAL & POLICIES', [
-              _buildLegalItem(Icons.description_outlined, 'Terms of Service', 'Read our user agreement', () {}),
-              _buildLegalItem(Icons.privacy_tip_outlined, 'Privacy Policy', 'How we handle your data', () {}),
-              _buildLegalItem(Icons.info_outline_rounded, 'Liquor Licenses', 'Verified merchant network', () {}),
+            _buildSection(context, 'LEGAL & POLICIES', [
+              _buildLegalItem(context, Icons.description_outlined, 'Terms of Service', 'Read our user agreement', () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const LegalContentScreen(
+                  title: 'Terms of Service',
+                  content: 'Welcome to TipsyTheoryy. By using our application, you agree to our terms... [Full Terms Content Here]',
+                )));
+              }),
+              _buildLegalItem(context, Icons.privacy_tip_outlined, 'Privacy Policy', 'How we handle your data', () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const LegalContentScreen(
+                  title: 'Privacy Policy',
+                  content: 'At TipsyTheoryy, your privacy is our priority. We collect minimal data to provide our services... [Full Policy Content Here]',
+                )));
+              }),
+              _buildLegalItem(context, Icons.info_outline_rounded, 'Liquor Licenses', 'Verified merchant network', () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const LegalContentScreen(
+                  title: 'About Our Licenses',
+                  content: 'All merchants on TipsyTheoryy are fully licensed by the relevant authorities to sell and distribute alcoholic beverages.',
+                )));
+              }),
             ]),
             const SizedBox(height: 40),
             const Text('App Version 1.0.0 (Production)', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
@@ -40,19 +57,21 @@ class SupportLegalScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSection(String title, List<Widget> items) {
+  Widget _buildSection(BuildContext context, String title, List<Widget> items) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
-          child: Text(title, style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+          child: Text(title, style: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
         ),
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? Theme.of(context).cardColor : Colors.white,
             borderRadius: BorderRadius.circular(24),
+            border: isDark ? Border.all(color: Colors.white10) : null,
           ),
           child: Column(children: items),
         ),
@@ -60,7 +79,8 @@ class SupportLegalScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildLegalItem(IconData icon, String title, String subtitle, VoidCallback onTap) {
+  Widget _buildLegalItem(BuildContext context, IconData icon, String title, String subtitle, VoidCallback onTap) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ListTile(
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -69,9 +89,9 @@ class SupportLegalScreen extends StatelessWidget {
         decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(10)),
         child: Icon(icon, color: AppTheme.primaryColor, size: 22),
       ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
-      subtitle: Text(subtitle, style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.bold)),
-      trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+      title: Text(title, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: isDark ? Colors.white : Colors.black87)),
+      subtitle: Text(subtitle, style: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.bold)),
+      trailing: Icon(Icons.chevron_right_rounded, color: isDark ? Colors.white24 : Colors.grey),
     );
   }
 
@@ -83,5 +103,12 @@ class SupportLegalScreen extends StatelessWidget {
   void _launchPhone() async {
     final Uri phoneLaunchUri = Uri(scheme: 'tel', path: '+254700000000');
     if (await canLaunchUrl(phoneLaunchUri)) await launchUrl(phoneLaunchUri);
+  }
+
+  void _launchWhatsApp() async {
+    final Uri whatsappUri = Uri.parse("https://wa.me/254700000000");
+    if (await canLaunchUrl(whatsappUri)) {
+      await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
+    }
   }
 }

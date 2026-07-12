@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../core/theme.dart';
 import '../../providers/product_provider.dart';
 import '../../providers/location_provider.dart';
@@ -15,8 +16,10 @@ class StoresListScreen extends StatelessWidget {
     final locProvider = Provider.of<LocationProvider>(context);
     final stores = productProvider.popularStores;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: AppTheme.primaryColor,
         elevation: 0,
@@ -69,9 +72,11 @@ class StoresListScreen extends StatelessWidget {
                 lat: locProvider.currentAddress?.latitude,
                 lng: locProvider.currentAddress?.longitude,
               ),
-              child: stores.isEmpty
-                ? const Center(child: Text('No stores found near your location.'))
-                : ListView.builder(
+              child: productProvider.isLoading && stores.isEmpty
+                ? _buildStoreSkeletons(context)
+                : stores.isEmpty
+                  ? Center(child: Text('No stores found near your location.', style: TextStyle(color: isDark ? Colors.white38 : Colors.grey)))
+                  : ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                     physics: const BouncingScrollPhysics(),
                     itemCount: stores.length,
@@ -91,6 +96,24 @@ class StoresListScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildStoreSkeletons(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: 5,
+      itemBuilder: (_, __) => Shimmer.fromColors(
+        baseColor: isDark ? AppTheme.darkShimmerBase : Colors.grey.shade100,
+        highlightColor: isDark ? AppTheme.darkShimmerHighlight : Colors.white,
+        child: Container(
+          height: 100,
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+        ),
       ),
     );
   }

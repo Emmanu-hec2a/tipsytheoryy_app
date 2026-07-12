@@ -11,13 +11,39 @@ class AuthProvider with ChangeNotifier {
   AuthStatus _status = AuthStatus.unauthenticated;
   String? _role;
   String? _errorMessage;
+  ThemeMode _themeMode = ThemeMode.system;
 
   AuthStatus get status => _status;
   String? get role => _role;
   String? get errorMessage => _errorMessage;
+  ThemeMode get themeMode => _themeMode;
 
   AuthProvider() {
     checkAuth();
+    _loadTheme();
+  }
+
+  Future<void> _loadTheme() async {
+    final theme = await _storage.read(key: 'theme_mode');
+    if (theme == 'light') {
+      _themeMode = ThemeMode.light;
+    } else if (theme == 'dark') {
+      _themeMode = ThemeMode.dark;
+    } else {
+      _themeMode = ThemeMode.system;
+    }
+    notifyListeners();
+  }
+
+  Future<void> toggleTheme() async {
+    if (_themeMode == ThemeMode.light) {
+      _themeMode = ThemeMode.dark;
+      await _storage.write(key: 'theme_mode', value: 'dark');
+    } else {
+      _themeMode = ThemeMode.light;
+      await _storage.write(key: 'theme_mode', value: 'light');
+    }
+    notifyListeners();
   }
 
   Future<bool> login(String username, String password) async {

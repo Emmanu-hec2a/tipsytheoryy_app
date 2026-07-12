@@ -10,10 +10,13 @@ class SavedAddressesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final locProvider = Provider.of<LocationProvider>(context);
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: AppTheme.primaryColor,
+        foregroundColor: Colors.white,
         title: const Text('Saved Addresses', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -35,9 +38,9 @@ class SavedAddressesScreen extends StatelessWidget {
                         margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: isDark ? Theme.of(context).cardColor : Colors.white,
                           borderRadius: BorderRadius.circular(16),
-                          border: addr.isDefault ? Border.all(color: AppTheme.accentColor, width: 2) : null,
+                          border: addr.isDefault ? Border.all(color: AppTheme.accentColor, width: 2) : (isDark ? Border.all(color: Colors.white10) : null),
                         ),
                         child: Row(
                           children: [
@@ -47,8 +50,8 @@ class SavedAddressesScreen extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(addr.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                  Text(addr.addressString, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                                  Text(addr.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isDark ? Colors.white : Colors.black87)),
+                                  Text(addr.addressString, style: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade600, fontSize: 13)),
                                 ],
                               ),
                             ),

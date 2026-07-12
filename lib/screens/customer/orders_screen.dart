@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../core/theme.dart';
 import '../../providers/order_provider.dart';
 import '../../models/order_model.dart';
+
+import '../../core/api_client.dart';
+import 'payment_pending_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
   final bool isStandalone;
@@ -30,7 +34,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     final orders = orderProvider.getFilteredOrders(_selectedFilter);
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: AppTheme.primaryColor,
         elevation: 0,
@@ -66,7 +70,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   Widget _buildBody(OrderProvider provider, List<OrderModel> orders) {
     if (provider.isLoading && orders.isEmpty) {
-      return const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor));
+      return _buildOrderSkeletons(context);
     }
 
     if (provider.error != null && orders.isEmpty) {
@@ -147,13 +151,17 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   Widget _buildOrderCard(OrderModel order) {
+    final isPaymentPending = order.status.toLowerCase() == 'payment_pending';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? Theme.of(context).cardColor : Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
+        border: isDark ? Border.all(color: Colors.white10) : null,
+        boxShadow: isDark ? [] : [
           BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 20, offset: const Offset(0, 8))
         ],
       ),
@@ -165,21 +173,21 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.05),
+                  color: isDark ? Colors.white.withValues(alpha: 0.05) : AppTheme.primaryColor.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Icon(Icons.liquor_rounded, color: AppTheme.primaryColor, size: 24),
+                child: Icon(Icons.liquor_rounded, color: isDark ? Colors.white : AppTheme.primaryColor, size: 24),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('#${order.orderNumber}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.primaryColor)),
+                    Text('#${order.orderNumber}', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: isDark ? Colors.white : AppTheme.primaryColor)),
                     const SizedBox(height: 2),
                     Text(
                       order.addressString ?? 'Delivery Order',
-                      style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.bold),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -196,9 +204,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
               ),
             ],
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Divider(height: 1, color: isDark ? Colors.white10 : Colors.grey.shade100),
           ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -208,43 +216,59 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 children: [
                   Text(
                     DateFormat('MMM dd, yyyy • hh:mm a').format(order.createdAt),
-                    style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.shopping_bag_outlined, size: 14, color: Colors.grey.shade400),
+                      Icon(Icons.shopping_bag_outlined, size: 14, color: isDark ? Colors.white24 : Colors.grey.shade400),
                       const SizedBox(width: 4),
-                      Text('${order.itemCount} items', style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.bold)),
+                      Text('${order.itemCount} items', style: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ],
               ),
               Text(
                 'KSh ${order.total.toStringAsFixed(0)}',
-                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: AppTheme.primaryColor)
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: isDark ? Colors.white : AppTheme.primaryColor)
               ),
             ],
           ),
           const SizedBox(height: 20),
           Row(
             children: [
-              Expanded(
-                child: SizedBox(
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/order-tracking', arguments: order.id);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      elevation: 0,
+              if (isPaymentPending)
+                Expanded(
+                  child: SizedBox(
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: () => _retryPayment(order),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.accentColor,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                      ),
+                      child: const Text('RETRY PAYMENT', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1, color: Colors.white)),
                     ),
-                    child: const Text('TRACK ORDER', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1)),
+                  ),
+                )
+              else
+                Expanded(
+                  child: SizedBox(
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pushNamed(context, '/order-tracking', arguments: order.id);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                      ),
+                      child: const Text('TRACK ORDER', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1)),
+                    ),
                   ),
                 ),
-              ),
               if (order.status.toLowerCase() == 'delivered') ...[
                 const SizedBox(width: 12),
                 SizedBox(
@@ -266,11 +290,42 @@ class _OrdersScreenState extends State<OrdersScreen> {
     );
   }
 
+  Future<void> _retryPayment(OrderModel order) async {
+    final apiClient = ApiClient();
+    try {
+      final response = await apiClient.post('partner/payments/mpesa/initiate/', data: {
+        'order_number': order.orderNumber,
+      });
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => PaymentPendingScreen(
+                orderId: order.id,
+                orderNumber: order.orderNumber,
+                checkoutRequestId: response.data['checkout_request_id'],
+              ),
+            ),
+          );
+        }
+      } else {
+        throw Exception(response.data['message'] ?? 'Failed to initiate payment');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
+  }
+
   Widget _buildStatusBadge(String status) {
     Color color;
     switch (status.toLowerCase()) {
       case 'delivered': color = Colors.green; break;
       case 'pending': color = Colors.orange; break;
+      case 'payment_pending': color = Colors.amber; break;
       case 'assigned': color = Colors.blue; break;
       case 'picked_up': color = Colors.purple; break;
       case 'cancelled': color = Colors.red; break;
@@ -299,7 +354,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
     if (normalizedStatus == 'paid') {
       color = Colors.green;
-      label = normalizedMethod == 'flutterwave' ? 'ONLINE PAID' : 'PAID';
+      label = normalizedMethod == 'mpesa' ? 'PAID VIA M-PESA' : 'PAID';
     } else if (normalizedStatus == 'failed') {
       color = Colors.red;
       label = 'PAYMENT FAILED';
@@ -320,6 +375,24 @@ class _OrdersScreenState extends State<OrdersScreen> {
       child: Text(
         label,
         style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+      ),
+    );
+  }
+
+  Widget _buildOrderSkeletons(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: 4,
+      itemBuilder: (_, __) => Shimmer.fromColors(
+        baseColor: isDark ? AppTheme.darkShimmerBase : AppTheme.shimmerBase,
+        highlightColor: isDark ? AppTheme.darkShimmerHighlight : AppTheme.shimmerHighlight,
+        child: Container(
+          height: 220,
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+        ),
       ),
     );
   }

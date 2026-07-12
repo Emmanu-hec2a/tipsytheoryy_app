@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api_client.dart';
 import '../../core/theme.dart';
@@ -12,13 +11,13 @@ import 'payment_result_screen.dart';
 class PaymentPendingScreen extends StatefulWidget {
   final int orderId;
   final String orderNumber;
-  final String paymentUrl;
+  final String? checkoutRequestId;
 
   const PaymentPendingScreen({
     super.key,
     required this.orderId,
     required this.orderNumber,
-    required this.paymentUrl,
+    this.checkoutRequestId,
   });
 
   @override
@@ -28,7 +27,7 @@ class PaymentPendingScreen extends StatefulWidget {
 class _PaymentPendingScreenState extends State<PaymentPendingScreen> with WidgetsBindingObserver {
   final ApiClient _apiClient = ApiClient();
   bool _isChecking = false;
-  String _statusMessage = 'Waiting for payment confirmation...';
+  String _statusMessage = 'An M-Pesa STK push has been sent to your phone. Please enter your PIN to complete the payment.';
   Timer? _pollTimer;
 
   @override
@@ -88,7 +87,7 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen> with Widget
                 builder: (_) => PaymentResultScreen(
                   isSuccess: false,
                   title: 'Payment failed',
-                  message: 'Your payment could not be completed. Please try again.',
+                  message: 'Your payment could not be completed. Please ensure you have sufficient funds and try again.',
                   onRetry: () {
                     Navigator.pop(context);
                   },
@@ -100,7 +99,7 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen> with Widget
           return;
         }
 
-        setState(() => _statusMessage = 'Waiting for payment confirmation...');
+        setState(() => _statusMessage = 'An M-Pesa STK push has been sent to your phone. Please enter your PIN to complete the payment.');
       }
     } catch (e) {
       if (mounted) {
@@ -113,21 +112,10 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen> with Widget
     }
   }
 
-  Future<void> _openPaymentPage() async {
-    final uri = Uri.parse(widget.paymentUrl);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open the payment page.')),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
@@ -148,42 +136,46 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen> with Widget
               ),
               child: Column(
                 children: [
-                  const Icon(Icons.payment, size: 56, color: AppTheme.accentColor),
+                  const Icon(Icons.phone_android_rounded, size: 56, color: AppTheme.accentColor),
                   const SizedBox(height: 16),
                   Text(
                     'Order ${widget.orderNumber}',
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 16),
                   Text(
                     _statusMessage,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.grey, fontSize: 14),
+                    style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
                   if (_isChecking)
                     const CircularProgressIndicator(color: AppTheme.primaryColor)
                   else
-                    const SizedBox(height: 24),
+                    const Text(
+                      'Checking status...',
+                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _openPaymentPage,
-                icon: const Icon(Icons.open_in_new),
-                label: const Text('Open payment page'),
+              height: 56,
+              child: ElevatedButton(
+                onPressed: _isChecking ? null : _checkPaymentStatus,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('I HAVE PAID', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
               ),
             ),
             const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: _checkPaymentStatus,
-                child: const Text('Check payment status'),
-              ),
+            TextButton(
+              onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+              child: const Text('Back to Home', style: TextStyle(color: Colors.grey)),
             ),
           ],
         ),

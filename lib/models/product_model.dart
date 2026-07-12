@@ -42,4 +42,20 @@ class ProductModel {
       isAvailable: json['is_available'] ?? true,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'description': description,
+      'price': price,
+      'original_price': originalPrice,
+      'discount_percent': discountPercent,
+      'image': image,
+      'category': category,
+      'store': storeId,
+      'is_new_arrival': isNewArrival,
+      'is_available': isAvailable,
+    };
+  }
 }

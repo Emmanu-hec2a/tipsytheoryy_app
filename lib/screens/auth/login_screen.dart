@@ -51,8 +51,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -96,29 +97,35 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildLabel('Phone Number'),
+                  _buildLabel('Phone Number', isDark),
                   TextField(
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
+                    style: TextStyle(color: isDark ? Colors.white : Colors.black87),
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.phone_outlined, size: 20),
+                      prefixIcon: Icon(Icons.phone_outlined, size: 20, color: isDark ? Colors.white38 : null),
                       hintText: 'Enter your phone number',
+                      hintStyle: TextStyle(color: isDark ? Colors.white24 : null),
+                      fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : null,
                       prefix: Container(
                         padding: const EdgeInsets.only(right: 8),
-                        child: const Text('+254', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+                        child: Text('+254', style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white70 : Colors.black)),
                       ),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _buildLabel('Password'),
+                  _buildLabel('Password', isDark),
                   TextField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
+                    style: TextStyle(color: isDark ? Colors.white : Colors.black87),
                     decoration: InputDecoration(
                       hintText: 'Enter your password',
-                      prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                      hintStyle: TextStyle(color: isDark ? Colors.white24 : null),
+                      fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : null,
+                      prefixIcon: Icon(Icons.lock_outline, size: 20, color: isDark ? Colors.white38 : null),
                       suffixIcon: IconButton(
-                        icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
+                        icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20, color: isDark ? Colors.white38 : null),
                         onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                       ),
                     ),
@@ -136,17 +143,18 @@ class _LoginScreenState extends State<LoginScreen> {
                               value: _rememberMe,
                               onChanged: (val) => setState(() => _rememberMe = val!),
                               activeColor: AppTheme.accentColor,
+                              side: isDark ? const BorderSide(color: Colors.white24) : null,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Text('Remember Me', style: TextStyle(fontSize: 13, color: Colors.black54)),
+                          Text('Remember Me', style: TextStyle(fontSize: 13, color: isDark ? Colors.white38 : Colors.black54)),
                         ],
                       ),
                       TextButton(
                         onPressed: () {},
-                        child: const Text('Forgot Password?', 
-                          style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold, fontSize: 13)
+                        child: Text('Forgot Password?', 
+                          style: TextStyle(color: isDark ? AppTheme.accentColor : AppTheme.primaryColor, fontWeight: FontWeight.bold, fontSize: 13)
                         ),
                       ),
                     ],
@@ -174,7 +182,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('Don\'t have an account? ', style: TextStyle(color: Colors.black54)),
+                      Text('Don\'t have an account? ', style: TextStyle(color: isDark ? Colors.white38 : Colors.black54)),
                       GestureDetector(
                         onTap: () => Navigator.push(
                           context,
@@ -191,27 +199,29 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                   const SizedBox(height: 32),
-                  const Row(
+                  Row(
                     children: [
-                      Expanded(child: Divider()),
+                      Expanded(child: Divider(color: isDark ? Colors.white10 : null)),
                       Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16),
-                        child: Text('OR', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text('OR', style: TextStyle(color: isDark ? Colors.white10 : Colors.grey, fontWeight: FontWeight.bold)),
                       ),
-                      Expanded(child: Divider()),
+                      Expanded(child: Divider(color: isDark ? Colors.white10 : null)),
                     ],
                   ),
                   const SizedBox(height: 32),
                   _buildSocialButton(
                     'Continue with Google',
                     SvgPicture.string(googleSvg, height: 22),
-                    Colors.black87,
+                    isDark ? Colors.white70 : Colors.black87,
+                    isDark,
                   ),
                   const SizedBox(height: 12),
                   _buildSocialButton(
                     'Continue with Apple',
-                    const Icon(Icons.apple, size: 24, color: Colors.black),
-                    Colors.black87,
+                    Icon(Icons.apple, size: 24, color: isDark ? Colors.white70 : Colors.black),
+                    isDark ? Colors.white70 : Colors.black87,
+                    isDark,
                   ),
                   const SizedBox(height: 20),
                 ],
@@ -223,14 +233,14 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildLabel(String text) {
+  Widget _buildLabel(String text, bool isDark) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87)),
+      child: Text(text, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: isDark ? Colors.white70 : Colors.black87)),
     );
   }
 
-  Widget _buildSocialButton(String text, Widget icon, Color color) {
+  Widget _buildSocialButton(String text, Widget icon, Color color, bool isDark) {
     return SizedBox(
       width: double.infinity,
       height: 55,
@@ -239,10 +249,11 @@ class _LoginScreenState extends State<LoginScreen> {
         icon: icon,
         label: Text(text, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
         style: OutlinedButton.styleFrom(
+          backgroundColor: isDark ? Colors.white.withValues(alpha: 0.05) : null,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          side: BorderSide(color: Colors.grey.shade300),
+          side: BorderSide(color: isDark ? Colors.white10 : Colors.grey.shade300),
         ),
       ),
     );

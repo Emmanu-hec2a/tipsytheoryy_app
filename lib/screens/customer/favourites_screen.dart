@@ -24,9 +24,10 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
   @override
   Widget build(BuildContext context) {
     final favProvider = Provider.of<FavouriteProvider>(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: AppTheme.primaryColor,
         elevation: 0,
@@ -64,6 +65,7 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
   }
 
   Widget _buildEmptyState() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -74,14 +76,14 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
             child: Icon(Icons.favorite_rounded, size: 80, color: Colors.red.withValues(alpha: 0.2)),
           ),
           const SizedBox(height: 30),
-          const Text(
+          Text(
             'Your collection is empty',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppTheme.primaryColor),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: isDark ? Colors.white : AppTheme.primaryColor),
           ),
           const SizedBox(height: 10),
-          const Text(
+          Text(
             'Heart your favourite stores to see them here.',
-            style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600),
+            style: TextStyle(color: isDark ? Colors.white38 : Colors.grey, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 32),
           ElevatedButton(

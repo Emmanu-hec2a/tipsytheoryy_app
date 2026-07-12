@@ -130,9 +130,10 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
     final riderProvider = Provider.of<RiderProvider>(context);
     final isOnline = riderProvider.isOnline;
     final activeOrder = riderProvider.activeOrder;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: AppTheme.primaryColor,
         elevation: 0,
@@ -159,15 +160,15 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
         ? _buildNoActiveTask(context)
         : Stack(
             children: [
-              _buildMapView(activeOrder),
+              _buildMapView(activeOrder, isDark),
               _buildFloatingHeader(activeOrder),
-              _buildDraggableDetails(activeOrder, riderProvider),
+              _buildDraggableDetails(activeOrder, riderProvider, isDark),
             ],
           ),
     );
   }
 
-  Widget _buildMapView(OrderModel order) {
+  Widget _buildMapView(OrderModel order, bool isDark) {
     final bool isHeadingToPickup = order.status.toLowerCase() == 'assigned';
     
     LatLng? storePos = (order.storeLatitude != null && order.storeLatitude != 0 && order.storeLatitude! >= -90 && order.storeLatitude! <= 90) 
@@ -176,12 +177,6 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
         ? LatLng(order.latitude!, order.longitude!) : null;
     LatLng? riderPos = _currentRiderPosition != null 
         ? LatLng(_currentRiderPosition!.latitude, _currentRiderPosition!.longitude) : null;
-
-    // DEBUG INFO
-    debugPrint("MAP DEBUG: Order #${order.orderNumber}");
-    debugPrint("MAP DEBUG: Store Coordinates: ${storePos?.latitude}, ${storePos?.longitude}");
-    debugPrint("MAP DEBUG: Customer Coordinates: ${customerPos?.latitude}, ${customerPos?.longitude}");
-    debugPrint("MAP DEBUG: Rider Coordinates: ${riderPos?.latitude}, ${riderPos?.longitude}");
 
     LatLng cameraTarget;
     if (isHeadingToPickup && storePos != null) {
@@ -227,6 +222,7 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
       myLocationButtonEnabled: true,
       zoomControlsEnabled: true,
       mapType: MapType.normal,
+      style: isDark ? AppTheme.midnightMapStyle : null,
       onMapCreated: (controller) {
         _mapController = controller;
         _updateCameraBounds(storePos, customerPos, riderPos, isHeadingToPickup);
@@ -325,7 +321,7 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
     );
   }
 
-  Widget _buildDraggableDetails(OrderModel order, RiderProvider provider) {
+  Widget _buildDraggableDetails(OrderModel order, RiderProvider provider, bool isDark) {
     final bool isHeadingToPickup = order.status.toLowerCase() == 'assigned';
 
     return DraggableScrollableSheet(
@@ -335,9 +331,10 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
       builder: (context, scrollController) {
         return Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? Theme.of(context).cardColor : Colors.white,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20)],
+            boxShadow: isDark ? [] : [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20)],
+            border: isDark ? Border.all(color: Colors.white10) : null,
           ),
           child: ListView(
             controller: scrollController,
@@ -347,7 +344,7 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
                 child: Container(
                   margin: const EdgeInsets.only(top: 12, bottom: 20),
                   width: 40, height: 4,
-                  decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2)),
+                  decoration: BoxDecoration(color: isDark ? Colors.white10 : Colors.grey.shade200, borderRadius: BorderRadius.circular(2)),
                 ),
               ),
               Row(
@@ -358,11 +355,11 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
                     children: [
                       Text(
                         isHeadingToPickup ? 'NEXT STEP: PICKUP' : 'NEXT STEP: DELIVERY', 
-                        style: const TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)
+                        style: TextStyle(color: isDark ? Colors.white38 : Colors.grey, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)
                       ),
                       Text(
                         order.status.replaceAll('_', ' ').toUpperCase(), 
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppTheme.primaryColor)
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: isDark ? Colors.white : AppTheme.primaryColor)
                       ),
                     ],
                   ),
@@ -379,17 +376,19 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
               ),
               const SizedBox(height: 24),
               _buildAddressRow(
+                context,
                 Icons.storefront_rounded, 
                 'PICKUP FROM', 
                 order.storeName ?? 'Merchant Store', 
                 isPickup: true,
                 isActive: isHeadingToPickup
               ),
-              const Padding(
-                padding: EdgeInsets.only(left: 11),
-                child: Align(alignment: Alignment.centerLeft, child: Text('⋮', style: TextStyle(color: Colors.grey, fontSize: 18))),
+              Padding(
+                padding: const EdgeInsets.only(left: 11),
+                child: Align(alignment: Alignment.centerLeft, child: Text('⋮', style: TextStyle(color: isDark ? Colors.white10 : Colors.grey, fontSize: 18))),
               ),
               _buildAddressRow(
+                context,
                 Icons.location_on_rounded, 
                 'DELIVER TO', 
                 order.addressString ?? 'Customer Address',
@@ -406,7 +405,7 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
                       final success = await provider.updateOrderStatus(order.id, nextStatus);
                       if (success && mounted) {
                         if (nextStatus == 'delivered') {
-                          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const DeliveryCompleteScreen()));
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const DeliveryCompleteScreen()));
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
@@ -440,22 +439,23 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
     );
   }
 
-  Widget _buildAddressRow(IconData icon, String label, String value, {bool isPickup = false, bool isActive = false}) {
+  Widget _buildAddressRow(BuildContext context, IconData icon, String label, String value, {bool isPickup = false, bool isActive = false}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       children: [
-        Icon(icon, size: 22, color: isActive ? (isPickup ? AppTheme.primaryColor : AppTheme.accentColor) : Colors.grey.shade300),
+        Icon(icon, size: 22, color: isActive ? (isPickup ? AppTheme.primaryColor : AppTheme.accentColor) : (isDark ? Colors.white10 : Colors.grey.shade300)),
         const SizedBox(width: 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: TextStyle(color: Colors.grey.shade400, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+              Text(label, style: TextStyle(color: isDark ? Colors.white24 : Colors.grey.shade400, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
               Text(
                 value, 
                 style: TextStyle(
                   fontSize: 14, 
                   fontWeight: FontWeight.w800, 
-                  color: isActive ? const Color(0xFF1E293B) : Colors.grey.shade400
+                  color: isActive ? (isDark ? Colors.white70 : const Color(0xFF1E293B)) : (isDark ? Colors.white10 : Colors.grey.shade400)
                 ), 
                 maxLines: 1, 
                 overflow: TextOverflow.ellipsis
@@ -468,19 +468,20 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
   }
 
   Widget _buildNoActiveTask(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
             padding: const EdgeInsets.all(30),
-            decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.05), shape: BoxShape.circle),
-            child: Icon(Icons.navigation_outlined, size: 80, color: AppTheme.primaryColor.withValues(alpha: 0.2)),
+            decoration: BoxDecoration(color: isDark ? Colors.white.withValues(alpha: 0.05) : AppTheme.primaryColor.withValues(alpha: 0.05), shape: BoxShape.circle),
+            child: Icon(Icons.navigation_outlined, size: 80, color: isDark ? Colors.white24 : AppTheme.primaryColor.withValues(alpha: 0.2)),
           ),
           const SizedBox(height: 30),
-          const Text('No Active Tasks', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppTheme.primaryColor)),
+          Text('No Active Tasks', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: isDark ? Colors.white70 : AppTheme.primaryColor)),
           const SizedBox(height: 10),
-          const Text('Accepted orders will appear here for navigation.', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
+          Text('Accepted orders will appear here for navigation.', style: TextStyle(color: isDark ? Colors.white38 : Colors.grey, fontWeight: FontWeight.w600)),
           const SizedBox(height: 30),
           ElevatedButton.icon(
             onPressed: () => Provider.of<RiderProvider>(context, listen: false).fetchRiderData(),

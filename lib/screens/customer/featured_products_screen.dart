@@ -10,11 +10,14 @@ class FeaturedProductsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final productProvider = Provider.of<ProductProvider>(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: AppTheme.primaryColor,
+        elevation: 0,
+        centerTitle: true,
         title: const Text(
           'Featured Deals',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
@@ -25,7 +28,7 @@ class FeaturedProductsScreen extends StatelessWidget {
         ),
       ),
       body: productProvider.featuredProducts.isEmpty
-          ? const Center(child: Text('No featured products available.'))
+          ? Center(child: Text('No featured products available.', style: TextStyle(color: isDark ? Colors.white38 : Colors.grey)))
           : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: productProvider.featuredProducts.length,

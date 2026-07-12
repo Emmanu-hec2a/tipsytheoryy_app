@@ -11,7 +11,7 @@ class CartScreen extends StatelessWidget {
     final cart = Provider.of<CartProvider>(context);
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: AppTheme.primaryColor,
         elevation: 0,
@@ -68,13 +68,15 @@ class CartScreen extends StatelessWidget {
   }
 
   Widget _buildCartItem(BuildContext context, CartProvider cart, CartItem item) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
+        border: isDark ? Border.all(color: Colors.white10) : null,
+        boxShadow: isDark ? [] : [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Row(
         children: [
@@ -82,14 +84,14 @@ class CartScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             child: item.product.image != null
                 ? Image.network(item.product.image!, width: 70, height: 70, fit: BoxFit.cover)
-                : Container(width: 70, height: 70, color: Colors.grey.shade100, child: const Icon(Icons.wine_bar, color: Colors.grey)),
+                : Container(width: 70, height: 70, color: isDark ? Colors.white10 : Colors.grey.shade100, child: const Icon(Icons.wine_bar, color: Colors.grey)),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item.product.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                Text(item.product.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: isDark ? Colors.white : Colors.black87)),
                 const SizedBox(height: 4),
                 Text('KSh ${item.product.price.toStringAsFixed(0)}', style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w900)),
               ],
@@ -97,12 +99,12 @@ class CartScreen extends StatelessWidget {
           ),
           Row(
             children: [
-              _buildQtyBtn(Icons.remove, () => cart.updateQuantity(item.product.id, item.quantity - 1)),
+              _buildQtyBtn(context, Icons.remove, () => cart.updateQuantity(item.product.id, item.quantity - 1)),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Text('${item.quantity}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                child: Text('${item.quantity}', style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
               ),
-              _buildQtyBtn(Icons.add, () => cart.updateQuantity(item.product.id, item.quantity + 1)),
+              _buildQtyBtn(context, Icons.add, () => cart.updateQuantity(item.product.id, item.quantity + 1)),
             ],
           ),
         ],
@@ -110,13 +112,17 @@ class CartScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildQtyBtn(IconData icon, VoidCallback onTap) {
+  Widget _buildQtyBtn(BuildContext context, IconData icon, VoidCallback onTap) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
-        child: Icon(icon, size: 16, color: AppTheme.primaryColor),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100, 
+          borderRadius: BorderRadius.circular(8)
+        ),
+        child: Icon(icon, size: 16, color: isDark ? Colors.white70 : AppTheme.primaryColor),
       ),
     );
   }
@@ -125,17 +131,17 @@ class CartScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, -5))],
       ),
       child: Column(
         children: [
-          _summaryRow('Subtotal', 'KSh ${cart.subtotal.toStringAsFixed(0)}'),
+          _summaryRow(context, 'Subtotal', 'KSh ${cart.subtotal.toStringAsFixed(0)}'),
           const SizedBox(height: 12),
-          _summaryRow('Delivery Fee', 'KSh ${cart.deliveryFee.toStringAsFixed(0)}'),
+          _summaryRow(context, 'Delivery Fee', 'KSh ${cart.deliveryFee.toStringAsFixed(0)}'),
           const Divider(height: 32),
-          _summaryRow('Total', 'KSh ${cart.total.toStringAsFixed(0)}', isBold: true),
+          _summaryRow(context, 'Total', 'KSh ${cart.total.toStringAsFixed(0)}', isBold: true),
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
@@ -155,12 +161,13 @@ class CartScreen extends StatelessWidget {
     );
   }
 
-  Widget _summaryRow(String label, String value, {bool isBold = false}) {
+  Widget _summaryRow(BuildContext context, String label, String value, {bool isBold = false}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(color: isBold ? Colors.black : Colors.grey.shade600, fontWeight: isBold ? FontWeight.bold : FontWeight.normal, fontSize: isBold ? 18 : 14)),
-        Text(value, style: TextStyle(color: isBold ? AppTheme.primaryColor : Colors.black, fontWeight: isBold ? FontWeight.w900 : FontWeight.bold, fontSize: isBold ? 22 : 14)),
+        Text(label, style: TextStyle(color: isBold ? (isDark ? Colors.white : Colors.black) : (isDark ? Colors.white38 : Colors.grey.shade600), fontWeight: isBold ? FontWeight.bold : FontWeight.normal, fontSize: isBold ? 18 : 14)),
+        Text(value, style: TextStyle(color: isBold ? (isDark ? Colors.white : AppTheme.primaryColor) : (isDark ? Colors.white70 : Colors.black), fontWeight: isBold ? FontWeight.w900 : FontWeight.bold, fontSize: isBold ? 22 : 14)),
       ],
     );
   }

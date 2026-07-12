@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../core/theme.dart';
 import '../../providers/product_provider.dart';
 import '../../providers/location_provider.dart';
@@ -33,6 +34,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     final locProvider = Provider.of<LocationProvider>(context, listen: false);
     final prodProvider = Provider.of<ProductProvider>(context, listen: false);
     
+    prodProvider.updateContext(context);
     await locProvider.fetchAddresses();
     
     final currentLat = locProvider.currentAddress?.latitude;
@@ -53,8 +55,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     final locationProvider = Provider.of<LocationProvider>(context);
     final isSearching = _searchController.text.isNotEmpty || productProvider.selectedCategory != 'All';
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: RefreshIndicator(
         onRefresh: () => _loadInitialData(),
         displacement: 40, 
@@ -73,10 +77,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   _buildProFilter(productProvider, locationProvider),
                   const SizedBox(height: 16), 
                   if (productProvider.isLoading && productProvider.featuredProducts.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 100),
-                      child: Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)),
-                    )
+                    _buildHomeSkeletons()
                   else if (productProvider.error != null && productProvider.featuredProducts.isEmpty && productProvider.searchResults.isEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 100),
@@ -272,10 +273,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   }
 
   void _showLocationSelection(BuildContext context, LocationProvider locProvider) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).cardColor,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (context) {
         return DraggableScrollableSheet(
@@ -290,7 +292,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Delivery Address', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppTheme.primaryColor)),
+                  Text('Delivery Address', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: isDark ? Colors.white : AppTheme.primaryColor)),
                   const SizedBox(height: 20),
                   ListTile(
                     onTap: () async {
@@ -301,13 +303,13 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                       }
                     },
                     leading: const Icon(Icons.my_location, color: AppTheme.accentColor),
-                    title: const Text('Use Current Location', style: TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: const Text('Locate me using GPS'),
+                    title: Text('Use Current Location', style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
+                    subtitle: Text('Locate me using GPS', style: TextStyle(color: isDark ? Colors.white38 : Colors.grey)),
                   ),
                   const Divider(),
                   Expanded(
                     child: locProvider.savedAddresses.isEmpty
-                        ? const Center(child: Text('No saved addresses yet', style: TextStyle(color: Colors.grey)))
+                        ? Center(child: Text('No saved addresses yet', style: TextStyle(color: isDark ? Colors.white38 : Colors.grey)))
                         : ListView.builder(
                             controller: scrollController,
                             itemCount: locProvider.savedAddresses.length,
@@ -320,8 +322,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                                   _loadInitialData();
                                 },
                                 leading: const Icon(Icons.location_on_outlined, color: AppTheme.primaryColor),
-                                title: Text(addr.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                subtitle: Text(addr.addressString, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                title: Text(addr.name, style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
+                                subtitle: Text(addr.addressString, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: isDark ? Colors.white38 : Colors.grey)),
                                 trailing: addr.id == locProvider.currentAddress?.id ? const Icon(Icons.check_circle, color: Colors.green) : null,
                               );
                             },
@@ -337,12 +339,13 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   }
 
   Widget _buildSearchBar(ProductProvider provider) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       height: 48, 
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? Theme.of(context).cardColor : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
+        boxShadow: isDark ? [] : [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 8,
@@ -353,16 +356,17 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       child: TextField(
         controller: _searchController,
         onChanged: (val) => provider.search(val),
+        style: TextStyle(color: isDark ? Colors.white : Colors.black87),
         decoration: InputDecoration(
           hintText: 'Search for drinks, brands...',
-          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+          hintStyle: TextStyle(color: isDark ? Colors.white24 : Colors.grey.shade400, fontSize: 13),
           prefixIcon: const Icon(Icons.search, color: AppTheme.primaryColor, size: 20),
           suffixIcon: const Padding(
             padding: EdgeInsets.all(10),
             child: Icon(Icons.tune, color: AppTheme.accentColor, size: 18),
           ),
           filled: true,
-          fillColor: Colors.white,
+          fillColor: isDark ? Theme.of(context).cardColor : Colors.white,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
@@ -404,6 +408,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   }
 
   Widget _buildProFilter(ProductProvider provider, LocationProvider locProvider) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
@@ -417,14 +422,14 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: provider.isProOnly ? const Color(0xFF0D3B30) : Colors.white,
+                color: provider.isProOnly ? AppTheme.primaryColor : (isDark ? Theme.of(context).cardColor : Colors.white),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: provider.isProOnly ? const Color(0xFF0D3B30) : Colors.grey.shade300,
+                  color: provider.isProOnly ? AppTheme.primaryColor : (isDark ? Colors.white12 : Colors.grey.shade300),
                   width: 1.5,
                 ),
-                boxShadow: provider.isProOnly ? [
-                  BoxShadow(color: const Color(0xFF0D3B30).withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 4))
+                boxShadow: (provider.isProOnly && !isDark) ? [
+                  BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 4))
                 ] : [],
               ),
               child: Row(
@@ -433,7 +438,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   Icon(
                     Icons.verified_rounded, 
                     size: 16, 
-                    color: provider.isProOnly ? Colors.white : Colors.grey.shade500
+                    color: provider.isProOnly ? Colors.white : (isDark ? Colors.white24 : Colors.grey.shade500)
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -442,7 +447,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                       fontSize: 11, 
                       fontWeight: FontWeight.w900, 
                       letterSpacing: 0.5,
-                      color: provider.isProOnly ? Colors.white : Colors.grey.shade600
+                      color: provider.isProOnly ? Colors.white : (isDark ? Colors.white38 : Colors.grey.shade600)
                     ),
                   ),
                   if (provider.isProOnly) ...[
@@ -456,7 +461,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           const SizedBox(width: 12),
           Text(
             provider.isProOnly ? 'Showing verified elite stores' : 'Filter by verified quality',
-            style: TextStyle(color: Colors.grey.shade400, fontSize: 11, fontWeight: FontWeight.bold),
+            style: TextStyle(color: isDark ? Colors.white24 : Colors.grey.shade400, fontSize: 11, fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -464,6 +469,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   }
 
   Widget _buildSectionHeader(String title, {required VoidCallback onTap}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
       child: Row(
@@ -471,7 +477,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         children: [
           Text(
             title,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppTheme.primaryColor),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: isDark ? Colors.white : AppTheme.primaryColor),
           ),
           if (title != 'Searching...' && !title.startsWith('Results in'))
             GestureDetector(
@@ -505,8 +511,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               product: product,
               isVertical: false,
               onAdd: () {
-                 // We don't have store delivery fee in FeaturedDeals easily without another API call
-                 // For now we'll just add to cart. In StoreDetailScreen it will be correct.
+                if (cart.isFromDifferentStore(product.storeId)) {
+                  _showClearCartDialog(context, cart, product);
+                  return;
+                }
                 cart.addToCart(product);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -538,6 +546,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         return ProductCard(
           product: product,
           onAdd: () {
+            if (cart.isFromDifferentStore(product.storeId)) {
+              _showClearCartDialog(context, cart, product);
+              return;
+            }
             cart.addToCart(product);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -550,6 +562,33 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           },
         );
       },
+    );
+  }
+
+  void _showClearCartDialog(BuildContext context, CartProvider cart, dynamic product, {double? deliveryFee}) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear cart?', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text('Your cart contains items from ${cart.activeStoreName ?? "another store"}. Clear it to start a new order?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCEL', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          ),
+          TextButton(
+            onPressed: () {
+              cart.clearCart();
+              cart.addToCart(product, deliveryFee: deliveryFee);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Cart cleared and item added')),
+              );
+            },
+            child: const Text('CLEAR & ADD', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -571,6 +610,51 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildHomeSkeletons() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseColor = isDark ? AppTheme.darkShimmerBase : AppTheme.shimmerBase;
+    final highlightColor = isDark ? AppTheme.darkShimmerHighlight : AppTheme.shimmerHighlight;
+
+    return Column(
+      children: [
+        _buildSectionHeader('Featured Deals', onTap: () {}),
+        SizedBox(
+          height: 160,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: 2,
+            itemBuilder: (_, __) => Shimmer.fromColors(
+              baseColor: baseColor,
+              highlightColor: highlightColor,
+              child: Container(
+                width: 300,
+                margin: const EdgeInsets.only(right: 12),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+              ),
+            ),
+          ),
+        ),
+        _buildSectionHeader('Popular Stores', onTap: () {}),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          itemCount: 3,
+          itemBuilder: (_, __) => Shimmer.fromColors(
+            baseColor: baseColor,
+            highlightColor: highlightColor,
+            child: Container(
+              height: 100,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

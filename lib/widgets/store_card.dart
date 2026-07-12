@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 import '../core/theme.dart';
 import '../models/store_model.dart';
 import 'pro_badge.dart';
@@ -17,16 +19,20 @@ class StoreCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return RepaintBoundary(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? Theme.of(context).cardColor : Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: store.isPro ? Border.all(color: const Color(0xFFC5A059).withValues(alpha: 0.3), width: 1.5) : null,
-          boxShadow: [
+          border: store.isPro 
+            ? Border.all(color: const Color(0xFFC5A059).withValues(alpha: isDark ? 0.5 : 0.3), width: 1.5) 
+            : (isDark ? Border.all(color: Colors.white10) : null),
+          boxShadow: isDark ? [] : [
             BoxShadow(
               color: store.isPro 
                 ? const Color(0xFFC5A059).withValues(alpha: 0.08)
@@ -43,15 +49,26 @@ class StoreCard extends StatelessWidget {
               width: 70,
               height: 70,
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withValues(alpha: 0.05),
+                color: isDark ? Colors.white.withValues(alpha: 0.05) : AppTheme.primaryColor.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(16),
-                image: store.logo != null
-                  ? DecorationImage(image: NetworkImage(store.logo!), fit: BoxFit.cover)
-                  : null,
               ),
-              child: store.logo == null ? Center(
-                child: Icon(Icons.storefront, color: AppTheme.primaryColor.withValues(alpha: 0.3), size: 32),
-              ) : null,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: store.logo != null
+                  ? CachedNetworkImage(
+                      imageUrl: store.logo!,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Shimmer.fromColors(
+                        baseColor: isDark ? Colors.white10 : Colors.grey.shade100,
+                        highlightColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
+                        child: Container(color: Colors.white),
+                      ),
+                      errorWidget: (context, url, error) => Icon(Icons.storefront, color: isDark ? Colors.white10 : AppTheme.primaryColor.withValues(alpha: 0.3), size: 32),
+                    )
+                  : Center(
+                      child: Icon(Icons.storefront, color: isDark ? Colors.white10 : AppTheme.primaryColor.withValues(alpha: 0.3), size: 32),
+                    ),
+              ),
             ),
             const SizedBox(width: 16),
 
@@ -73,7 +90,9 @@ class StoreCard extends StatelessWidget {
                                 style: TextStyle(
                                   fontWeight: FontWeight.w900,
                                   fontSize: 17,
-                                  color: store.isOpen ? AppTheme.primaryColor : Colors.grey,
+                                  color: store.isOpen 
+                                    ? (isDark ? Colors.white : AppTheme.primaryColor) 
+                                    : (isDark ? Colors.white24 : Colors.grey),
                                   overflow: TextOverflow.ellipsis
                                 ),
                               ),
@@ -83,7 +102,7 @@ class StoreCard extends StatelessWidget {
                               ProBadge(color: store.isOpen ? null : Colors.grey),
                               const SizedBox(width: 4),
                               // Express Delivery Badge if delivery < 25 mins
-                              if (store.isOpen && int.tryParse(store.deliveryTime.split(' ')[0]) != null && 
+                              if (store.isOpen && int.tryParse(store.deliveryTime.split(' ')[0]) != null &&
                                   int.parse(store.deliveryTime.split(' ')[0]) <= 25)
                                 const Icon(Icons.bolt_rounded, color: Colors.amber, size: 18),
                             ],
@@ -115,12 +134,12 @@ class StoreCard extends StatelessWidget {
                       const SizedBox(width: 4),
                       Text(
                         store.rating.toStringAsFixed(1),
-                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.primaryColor)
+                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: isDark ? Colors.white : AppTheme.primaryColor)
                       ),
                       const SizedBox(width: 4),
                       Text(
                         '(${store.reviewsCount})',
-                        style: TextStyle(color: Colors.grey.shade500, fontSize: 13, fontWeight: FontWeight.bold)
+                        style: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 13, fontWeight: FontWeight.bold)
                       ),
                       const SizedBox(width: 12),
                       const Icon(Icons.delivery_dining, color: AppTheme.accentColor, size: 16),
@@ -134,9 +153,9 @@ class StoreCard extends StatelessWidget {
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      _buildMiniInfo(Icons.access_time_filled_rounded, store.deliveryTime),
+                      _buildMiniInfo(Icons.access_time_filled_rounded, store.deliveryTime, isDark),
                       const SizedBox(width: 12),
-                      _buildMiniInfo(Icons.location_on_rounded, '${store.distance.toStringAsFixed(1)} km'),
+                      _buildMiniInfo(Icons.location_on_rounded, '${store.distance.toStringAsFixed(1)} km', isDark),
                     ],
                   ),
                 ],
@@ -145,17 +164,18 @@ class StoreCard extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 
-  Widget _buildMiniInfo(IconData icon, String text) {
+  Widget _buildMiniInfo(IconData icon, String text, bool isDark) {
     return Row(
       children: [
-        Icon(icon, size: 14, color: Colors.grey.shade400),
+        Icon(icon, size: 14, color: isDark ? Colors.white24 : Colors.grey.shade400),
         const SizedBox(width: 4),
         Text(
           text,
-          style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.bold)
+          style: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.bold)
         ),
       ],
     );

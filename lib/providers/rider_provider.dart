@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geolocator/geolocator.dart';
 import '../core/api_client.dart';
 import '../models/order_model.dart';
@@ -7,16 +8,21 @@ import '../models/user_model.dart';
 
 class RiderProvider with ChangeNotifier {
   final ApiClient _apiClient = ApiClient();
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
   Timer? _pollingTimer;
 
   UserModel? _riderProfile;
   List<OrderModel> _orderQueue = [];
+  List<OrderModel> _deliveryHistory = [];
+  List<Map<String, dynamic>> _earningsHistory = [];
   Map<String, dynamic> _earningsSummary = {};
   bool _isLoading = false;
   String? _error;
 
   UserModel? get riderProfile => _riderProfile;
   List<OrderModel> get orderQueue => _orderQueue;
+  List<OrderModel> get deliveryHistory => _deliveryHistory;
+  List<Map<String, dynamic>> get earningsHistory => _earningsHistory;
   Map<String, dynamic> get earningsSummary => _earningsSummary;
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -40,6 +46,13 @@ class RiderProvider with ChangeNotifier {
 
   Future<void> _pollData() async {
     try {
+      // 🛡️ Guard: Only poll if the user is actually a rider
+      final role = await _storage.read(key: 'role');
+      if (role != 'rider') {
+        stopRealtimePolling();
+        return;
+      }
+
       final response = await _apiClient.get('rider/orders/queue/');
       if (response.statusCode == 200) {
         final List data = response.data;
@@ -88,6 +101,8 @@ class RiderProvider with ChangeNotifier {
       final responses = await Future.wait([
         _apiClient.get('rider/profile/'),
         _apiClient.get('rider/orders/queue/'),
+        _apiClient.get('rider/orders/history/'),
+        _apiClient.get('rider/earnings/'),
         _apiClient.get('rider/earnings/summary/'),
       ]);
 
@@ -99,7 +114,14 @@ class RiderProvider with ChangeNotifier {
         _orderQueue = data.map((json) => OrderModel.fromJson(json)).toList();
       }
       if (responses[2].statusCode == 200) {
-        _earningsSummary = responses[2].data;
+        final List data = responses[2].data;
+        _deliveryHistory = data.map((json) => OrderModel.fromJson(json)).toList();
+      }
+      if (responses[3].statusCode == 200) {
+        _earningsHistory = List<Map<String, dynamic>>.from(responses[3].data);
+      }
+      if (responses[4].statusCode == 200) {
+        _earningsSummary = responses[4].data;
       }
       
       startRealtimePolling();

@@ -27,6 +27,224 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   bool _isAutoCameraEnabled = true;
   List<LatLng> _polylinePoints = [];
 
+  static const String _darkMapStyle = '''
+[
+  {
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#122a22"
+      }
+    ]
+  },
+  {
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#746855"
+      }
+    ]
+  },
+  {
+    "elementType": "labels.text.stroke",
+    "stylers": [
+      {
+        "color": "#122a22"
+      }
+    ]
+  },
+  {
+    "featureType": "administrative",
+    "elementType": "geometry.stroke",
+    "stylers": [
+      {
+        "color": "#c9b2a6"
+      }
+    ]
+  },
+  {
+    "featureType": "administrative.land_parcel",
+    "elementType": "geometry.stroke",
+    "stylers": [
+      {
+        "color": "#dcd2db"
+      }
+    ]
+  },
+  {
+    "featureType": "administrative.province",
+    "elementType": "geometry.stroke",
+    "stylers": [
+      {
+        "color": "#72a281"
+      }
+    ]
+  },
+  {
+    "featureType": "landscape.natural",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#122a22"
+      }
+    ]
+  },
+  {
+    "featureType": "poi",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#122a22"
+      }
+    ]
+  },
+  {
+    "featureType": "poi",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#93817c"
+      }
+    ]
+  },
+  {
+    "featureType": "poi.park",
+    "elementType": "geometry.fill",
+    "stylers": [
+      {
+        "color": "#0d3b30"
+      }
+    ]
+  },
+  {
+    "featureType": "poi.park",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#447530"
+      }
+    ]
+  },
+  {
+    "featureType": "road",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#1b3d35"
+      }
+    ]
+  },
+  {
+    "featureType": "road.arterial",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#1b3d35"
+      }
+    ]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#1b3d35"
+      }
+    ]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "geometry.stroke",
+    "stylers": [
+      {
+        "color": "#1b3d35"
+      }
+    ]
+  },
+  {
+    "featureType": "road.highway.controlled_access",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#1b3d35"
+      }
+    ]
+  },
+  {
+    "featureType": "road.highway.controlled_access",
+    "elementType": "geometry.stroke",
+    "stylers": [
+      {
+        "color": "#1b3d35"
+      }
+    ]
+  },
+  {
+    "featureType": "road.local",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#806b63"
+      }
+    ]
+  },
+  {
+    "featureType": "transit.line",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#dfd2ae"
+      }
+    ]
+  },
+  {
+    "featureType": "transit.line",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#8f7d77"
+      }
+    ]
+  },
+  {
+    "featureType": "transit.line",
+    "elementType": "labels.text.stroke",
+    "stylers": [
+      {
+        "color": "#ebe3cd"
+      }
+    ]
+  },
+  {
+    "featureType": "transit.station",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#dfd2ae"
+      }
+    ]
+  },
+  {
+    "featureType": "water",
+    "elementType": "geometry.fill",
+    "stylers": [
+      {
+        "color": "#051410"
+      }
+    ]
+  },
+  {
+    "featureType": "water",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#92998d"
+      }
+    ]
+  }
+]
+''';
+
   @override
   void initState() {
     super.initState();
@@ -97,8 +315,9 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text('Track Order #${widget.orderId}'),
         centerTitle: true,
@@ -106,9 +325,9 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         foregroundColor: Colors.white,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor))
+          ? Center(child: CircularProgressIndicator(color: isDark ? Colors.white : AppTheme.primaryColor))
           : _errorMessage != null
-              ? Center(child: Text(_errorMessage!))
+              ? Center(child: Text(_errorMessage!, style: TextStyle(color: isDark ? Colors.white70 : Colors.black87)))
               : Column(
                   children: [
                     _buildMap(),
@@ -127,6 +346,10 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                                 onPressed: () {},
                                 icon: const Icon(Icons.headset_mic_outlined, size: 18),
                                 label: const Text('Contact Support'),
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(color: isDark ? Colors.white24 : AppTheme.primaryColor),
+                                  foregroundColor: isDark ? Colors.white70 : AppTheme.primaryColor,
+                                ),
                               ),
                             ),
                           ],
@@ -141,6 +364,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   Widget _buildMap() {
     final order = _order;
     if (order == null) return _buildMapPlaceholder();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     LatLng? riderPos = (order.riderLatitude != null && order.riderLatitude != 0) 
         ? LatLng(order.riderLatitude!, order.riderLongitude!) : null;
@@ -194,6 +418,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
             markers: markers,
             myLocationButtonEnabled: false,
             zoomControlsEnabled: false,
+            style: isDark ? _darkMapStyle : null,
             onCameraMoveStarted: () {
               // If user starts moving the map manually, disable auto-camera
               if (_isAutoCameraEnabled) {
@@ -241,9 +466,10 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.9),
+                color: isDark ? Theme.of(context).cardColor : Colors.white.withValues(alpha: 0.9),
                 borderRadius: BorderRadius.circular(20),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5)],
+                boxShadow: isDark ? [] : [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5)],
+                border: isDark ? Border.all(color: Colors.white10) : null,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -253,7 +479,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                     decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle),
                   ),
                   const SizedBox(width: 6),
-                  const Text('Live Tracking', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+                  Text('Live Tracking', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isDark ? Colors.white70 : AppTheme.primaryColor)),
                 ],
               ),
             ),
@@ -334,23 +560,25 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   Widget _buildOrderSummary() {
     final order = _order;
     if (order == null) return const SizedBox.shrink();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFE6F2F0),
+        color: isDark ? Theme.of(context).cardColor : const Color(0xFFE6F2F0),
         borderRadius: BorderRadius.circular(16),
+        border: isDark ? Border.all(color: Colors.white10) : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(order.orderNumber, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+          Text(order.orderNumber, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: isDark ? Colors.white : Colors.black87)),
           const SizedBox(height: 6),
-          Text('Payment: ${_formatPaymentStatus(order.paymentStatus)}', style: const TextStyle(fontSize: 13, color: Colors.black87)),
+          Text('Payment: ${_formatPaymentStatus(order.paymentStatus)}', style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.black87)),
           const SizedBox(height: 6),
-          Text('Status: ${_formatStatus(order.status)}', style: const TextStyle(fontSize: 13, color: Colors.black87)),
+          Text('Status: ${_formatStatus(order.status)}', style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.black87)),
           const SizedBox(height: 6),
-          Text('Total: KSh ${order.total.toStringAsFixed(0)}', style: const TextStyle(fontSize: 13, color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
+          Text('Total: KSh ${order.total.toStringAsFixed(0)}', style: TextStyle(fontSize: 13, color: isDark ? Colors.white : AppTheme.primaryColor, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -370,14 +598,15 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   }
 
   Widget _buildStep(String title, String subtitle, bool isCompleted, {bool isLast = false}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return IntrinsicHeight(
       child: Row(
         children: [
           Column(
             children: [
-              Icon(isCompleted ? Icons.check_circle : Icons.radio_button_unchecked, color: isCompleted ? AppTheme.accentColor : Colors.grey.shade300, size: 24),
+              Icon(isCompleted ? Icons.check_circle : Icons.radio_button_unchecked, color: isCompleted ? AppTheme.accentColor : (isDark ? Colors.white10 : Colors.grey.shade300), size: 24),
               if (!isLast)
-                Expanded(child: VerticalDivider(color: isCompleted ? AppTheme.accentColor : Colors.grey.shade300, thickness: 2)),
+                Expanded(child: VerticalDivider(color: isCompleted ? AppTheme.accentColor : (isDark ? Colors.white10 : Colors.grey.shade300), thickness: 2)),
             ],
           ),
           const SizedBox(width: 16),
@@ -387,8 +616,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: isCompleted ? Colors.black : Colors.grey)),
-                  Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: isCompleted ? (isDark ? Colors.white : Colors.black) : (isDark ? Colors.white24 : Colors.grey))),
+                  Text(subtitle, style: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : Colors.grey)),
                 ],
               ),
             ),

@@ -50,44 +50,50 @@ class _RatingScreenState extends State<RatingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(title: const Text('Rate Your Experience')),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        title: const Text('Rate Your Experience'),
+        backgroundColor: AppTheme.primaryColor,
+        foregroundColor: Colors.white,
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Center(
+            Center(
               child: Column(
                 children: [
-                  Icon(Icons.stars_rounded, size: 80, color: AppTheme.accentColor),
-                  SizedBox(height: 16),
+                  const Icon(Icons.stars_rounded, size: 80, color: AppTheme.accentColor),
+                  const SizedBox(height: 16),
                   Text(
                     'How was your delivery?',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppTheme.primaryColor),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
                     'Your feedback helps us improve our service',
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(color: isDark ? Colors.white38 : Colors.grey),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 40),
-            _buildRatingSection('Rate the Store', _storeRating, (val) => setState(() => _storeRating = val)),
+            _buildRatingSection('Rate the Store', _storeRating, (val) => setState(() => _storeRating = val), isDark),
             const SizedBox(height: 30),
-            _buildRatingSection('Rate the Rider', _riderRating, (val) => setState(() => _riderRating = val)),
+            _buildRatingSection('Rate the Rider', _riderRating, (val) => setState(() => _riderRating = val), isDark),
             const SizedBox(height: 30),
-            const Text('Add a Comment (Optional)', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text('Add a Comment (Optional)', style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
             const SizedBox(height: 12),
             TextField(
               controller: _commentController,
               maxLines: 4,
-              decoration: const InputDecoration(
+              style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+              decoration: InputDecoration(
                 hintText: 'Share your experience...',
-                fillColor: Color(0xFFF9FAFB),
+                fillColor: isDark ? Theme.of(context).cardColor : const Color(0xFFF9FAFB),
               ),
             ),
             const SizedBox(height: 40),
@@ -107,11 +113,11 @@ class _RatingScreenState extends State<RatingScreen> {
     );
   }
 
-  Widget _buildRatingSection(String title, int currentRating, Function(int) onRatingChanged) {
+  Widget _buildRatingSection(String title, int currentRating, Function(int) onRatingChanged, bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isDark ? Colors.white : Colors.black87)),
         const SizedBox(height: 12),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
