@@ -37,16 +37,20 @@ dependencies:
   dio: ^5.9.2
   flutter_secure_storage: ^10.3.1
   geolocator: ^14.0.3
+  location: ^7.0.1
   google_maps_flutter: ^2.17.1
   url_launcher: ^6.3.2
   firebase_messaging: ^16.4.1
   firebase_core: ^4.11.0
+  firebase_auth: 6.5.4
+  google_sign_in: ^6.2.2
+  sign_in_with_apple: ^6.1.4
   flutter_local_notifications: ^18.0.1
   provider: ^6.1.5+1
   cached_network_image: ^3.4.1
   shared_preferences: ^2.5.2
   dio_cache_interceptor: ^3.5.0
-  path_provider: ^2.1.5
+  path_provider: ^2.1.6
   intl: ^0.20.3
   image_picker: ^1.2.2
   geocoding: ^4.0.0
@@ -56,6 +60,9 @@ dependencies:
   shimmer: ^3.0.0
   share_plus: ^13.2.0
   flutter_dotenv: ^5.2.1
+  record: ^7.1.1
+  audioplayers: ^6.8.1
+  lottie: ^3.5.1
 
 dev_dependencies:
   flutter_test:
@@ -81,6 +88,8 @@ flutter:
 
   assets:
     - .env
+    - assets/images/
+    - assets/lottie/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

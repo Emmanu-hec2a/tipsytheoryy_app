@@ -22,4 +22,14 @@ class CategoryModel {
       order: json['order'] ?? 0,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'icon': icon,
+      'store_type': storeType,
+      'order': order,
+    };
+  }
 }

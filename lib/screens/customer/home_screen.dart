@@ -8,6 +8,7 @@ import '../../providers/cart_provider.dart';
 import '../../widgets/category_chip.dart';
 import '../../widgets/product_card.dart';
 import '../../widgets/store_card.dart';
+import '../../models/category_model.dart';
 import 'store_detail_screen.dart';
 import 'featured_products_screen.dart';
 import 'stores_list_screen.dart';
@@ -35,12 +36,16 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     final prodProvider = Provider.of<ProductProvider>(context, listen: false);
     
     prodProvider.updateContext(context);
+    
+    // 📦 Load cached data first for instant offline access
+    await prodProvider.loadCachedHomeData();
+
     await locProvider.fetchAddresses();
     
     final currentLat = locProvider.currentAddress?.latitude;
     final currentLng = locProvider.currentAddress?.longitude;
     
-    await prodProvider.fetchHomeData(lat: currentLat, lng: currentLng);
+    await prodProvider.fetchHomeData(lat: currentLat, lng: currentLng, limit: 10);
   }
 
   @override
@@ -76,7 +81,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   const SizedBox(height: 12),
                   _buildProFilter(productProvider, locationProvider),
                   const SizedBox(height: 16), 
-                  if (productProvider.isLoading && productProvider.featuredProducts.isEmpty)
+                  if (productProvider.isHomeLoading && productProvider.featuredProducts.isEmpty && productProvider.popularStores.isEmpty)
                     _buildHomeSkeletons()
                   else if (productProvider.error != null && productProvider.featuredProducts.isEmpty && productProvider.searchResults.isEmpty)
                     Padding(
@@ -109,7 +114,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         else
                           _buildSearchResults(productProvider),
                     ] else ...[
-                        if (productProvider.featuredProducts.isNotEmpty) ...[
+                        // Featured Deals Section
+                        if (productProvider.isFeaturedLoading && productProvider.featuredProducts.isEmpty)
+                          _buildFeaturedSkeletons()
+                        else if (productProvider.featuredProducts.isNotEmpty) ...[
                           _buildSectionHeader(
                             'Featured Deals', 
                             onTap: () => Navigator.push(
@@ -119,7 +127,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                           ),
                           _buildFeaturedDeals(productProvider),
                         ],
-                        if (productProvider.popularStores.isNotEmpty) ...[
+
+                        // Popular Stores Section
+                        if (productProvider.isStoresLoading && productProvider.popularStores.isEmpty)
+                          _buildStoreSkeletons()
+                        else if (productProvider.popularStores.isNotEmpty) ...[
                           _buildSectionHeader(
                             'Popular Stores Near You', 
                             onTap: () => Navigator.push(
@@ -386,7 +398,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   }
 
   Widget _buildCategories(ProductProvider provider) {
-    final List<String> categories = ['All', ...provider.categories.map((c) => c.name)];
+    final List<dynamic> categories = [
+      {'id': 0, 'name': 'All'},
+      ...provider.categories
+    ];
 
     return SizedBox(
       height: 42,
@@ -396,11 +411,25 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         itemCount: categories.length,
         itemBuilder: (context, index) {
           final cat = categories[index];
-          final isSelected = provider.selectedCategory == cat;
+          String catName;
+          String? catIcon;
+
+          if (cat is Map) {
+            catName = cat['name'];
+            catIcon = cat['icon'];
+          } else if (cat is CategoryModel) {
+            catName = cat.name;
+            catIcon = cat.icon;
+          } else {
+            catName = cat.toString();
+          }
+          
+          final isSelected = provider.selectedCategory == catName;
           return CategoryChip(
-            name: cat,
+            name: catName,
+            icon: catIcon,
             isSelected: isSelected,
-            onTap: () => provider.setCategory(cat),
+            onTap: () => provider.setCategory(catName),
           );
         },
       ),
@@ -510,20 +539,16 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             child: ProductCard(
               product: product,
               isVertical: false,
-              onAdd: () {
-                if (cart.isFromDifferentStore(product.storeId)) {
-                  _showClearCartDialog(context, cart, product);
-                  return;
-                }
-                cart.addToCart(product);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('${product.name} added to cart'), 
-                    duration: const Duration(seconds: 1),
-                    behavior: SnackBarBehavior.floating,
-                    margin: const EdgeInsets.only(bottom: 90, left: 20, right: 20),
-                    backgroundColor: AppTheme.primaryColor,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              showAddButton: false, // 🛡️ Redirect to store context
+              onView: () {
+                final store = provider.popularStores.firstWhere(
+                  (s) => s.id == product.storeId,
+                  orElse: () => provider.popularStores.first, // Fallback
+                );
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => StoreDetailScreen(store: store),
                   ),
                 );
               },
@@ -545,18 +570,16 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         final product = provider.searchResults[index];
         return ProductCard(
           product: product,
-          onAdd: () {
-            if (cart.isFromDifferentStore(product.storeId)) {
-              _showClearCartDialog(context, cart, product);
-              return;
-            }
-            cart.addToCart(product);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('${product.name} added to cart'), 
-                duration: const Duration(seconds: 1),
-                behavior: SnackBarBehavior.floating,
-                margin: const EdgeInsets.only(bottom: 90, left: 20, right: 20),
+          showAddButton: false, // 🛡️ Force Store Context for radius/fee validation
+          onView: () {
+            final store = provider.popularStores.firstWhere(
+              (s) => s.id == product.storeId,
+              orElse: () => provider.popularStores.first,
+            );
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => StoreDetailScreen(store: store),
               ),
             );
           },
@@ -614,6 +637,15 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   }
 
   Widget _buildHomeSkeletons() {
+    return Column(
+      children: [
+        _buildFeaturedSkeletons(),
+        _buildStoreSkeletons(),
+      ],
+    );
+  }
+
+  Widget _buildFeaturedSkeletons() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final baseColor = isDark ? AppTheme.darkShimmerBase : AppTheme.shimmerBase;
     final highlightColor = isDark ? AppTheme.darkShimmerHighlight : AppTheme.shimmerHighlight;
@@ -638,6 +670,17 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             ),
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildStoreSkeletons() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseColor = isDark ? AppTheme.darkShimmerBase : AppTheme.shimmerBase;
+    final highlightColor = isDark ? AppTheme.darkShimmerHighlight : AppTheme.shimmerHighlight;
+
+    return Column(
+      children: [
         _buildSectionHeader('Popular Stores', onTap: () {}),
         ListView.builder(
           shrinkWrap: true,

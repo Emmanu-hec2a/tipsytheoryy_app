@@ -7,13 +7,17 @@ import '../models/product_model.dart';
 class ProductCard extends StatelessWidget {
   final ProductModel product;
   final VoidCallback? onAdd;
+  final VoidCallback? onView; // 🆕 Added for navigation
   final bool isVertical;
+  final bool showAddButton; // 🆕 Added to toggle between Add and View
 
   const ProductCard({
     super.key, 
     required this.product, 
     this.onAdd,
+    this.onView,
     this.isVertical = true,
+    this.showAddButton = true,
   });
 
   @override
@@ -103,9 +107,11 @@ class ProductCard extends StatelessWidget {
                           ),
                         ),
 
-                        // Add Button
+                        // Action Button (Add or View)
                         GestureDetector(
-                          onTap: product.isAvailable ? onAdd : null,
+                          onTap: product.isAvailable 
+                            ? (showAddButton ? onAdd : onView) 
+                            : null,
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                             decoration: BoxDecoration(
@@ -117,7 +123,9 @@ class ProductCard extends StatelessWidget {
                             child: Row(
                               children: [
                                 Icon(
-                                  product.isAvailable ? Icons.add_shopping_cart : Icons.block, 
+                                  product.isAvailable 
+                                    ? (showAddButton ? Icons.add_shopping_cart : Icons.visibility_outlined) 
+                                    : Icons.block, 
                                   size: 14, 
                                   color: product.isAvailable 
                                     ? (isDark ? Colors.white70 : Colors.grey.shade700) 
@@ -125,7 +133,9 @@ class ProductCard extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  product.isAvailable ? 'Add' : 'Sold Out',
+                                  product.isAvailable 
+                                    ? (showAddButton ? 'Add' : 'View More') 
+                                    : 'Sold Out',
                                   style: TextStyle(
                                     color: product.isAvailable 
                                       ? (isDark ? Colors.white70 : Colors.grey.shade700) 

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme.dart';
 import '../../providers/product_provider.dart';
 import '../../widgets/product_card.dart';
+import 'store_detail_screen.dart';
 
 class FeaturedProductsScreen extends StatelessWidget {
   const FeaturedProductsScreen({super.key});
@@ -33,8 +34,23 @@ class FeaturedProductsScreen extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               itemCount: productProvider.featuredProducts.length,
               itemBuilder: (context, index) {
+                final product = productProvider.featuredProducts[index];
                 return ProductCard(
-                  product: productProvider.featuredProducts[index],
+                  product: product,
+                  showAddButton: false, // 🛡️ Force Store Context
+                  onView: () {
+                    // Find the store from the popular stores list or navigate with basic info
+                    final store = productProvider.popularStores.firstWhere(
+                      (s) => s.id == product.storeId,
+                      orElse: () => productProvider.popularStores.first,
+                    );
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => StoreDetailScreen(store: store),
+                      ),
+                    );
+                  },
                 );
               },
             ),

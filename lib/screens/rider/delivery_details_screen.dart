@@ -1,18 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../../core/theme.dart';
 import '../../providers/rider_provider.dart';
 import '../../models/order_model.dart';
 
-class DeliveryDetailsScreen extends StatelessWidget {
+class DeliveryDetailsScreen extends StatefulWidget {
   final int orderId;
   const DeliveryDetailsScreen({super.key, required this.orderId});
 
   @override
+  State<DeliveryDetailsScreen> createState() => _DeliveryDetailsScreenState();
+}
+
+class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
+  String? _imagePath;
+  final ImagePicker _picker = ImagePicker();
+
+  Future<void> _takeVerificationPhoto() async {
+    final XFile? photo = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 70, // Optimize for upload
+    );
+    if (photo != null) {
+      setState(() => _imagePath = photo.path);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final riderProvider = Provider.of<RiderProvider>(context);
-    final order = riderProvider.orderQueue.firstWhere((o) => o.id == orderId, orElse: () => throw Exception('Order not found'));
+    final order = riderProvider.orderQueue.firstWhere((o) => o.id == widget.orderId, orElse: () => throw Exception('Order not found'));
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -43,6 +63,14 @@ class DeliveryDetailsScreen extends StatelessWidget {
                   _buildAddressCard(context, Icons.location_on_rounded, 'Drop-off Point', order.addressString ?? 'Customer Address'),
                   
                   const SizedBox(height: 32),
+
+                  if (order.status.toLowerCase() == 'arrived') ...[
+                    Text('MIDNIGHT MIRROR VERIFICATION', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: isDark ? Colors.white38 : Colors.grey, letterSpacing: 1.2)),
+                    const SizedBox(height: 16),
+                    _buildVerificationSection(context, order),
+                    const SizedBox(height: 32),
+                  ],
+
                   Text('ORDER SUMMARY', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: isDark ? Colors.white38 : Colors.grey, letterSpacing: 1.2)),
                   const SizedBox(height: 16),
                   _buildSummaryCard(context, order),
@@ -72,7 +100,20 @@ class DeliveryDetailsScreen extends StatelessWidget {
                       onPressed: () async {
                         final nextStatus = _getNextStatusValue(order.status);
                         if (nextStatus != null) {
-                          final success = await riderProvider.updateOrderStatus(order.id, nextStatus);
+                          // Mandatory check for V1 logic: if required, must have image path or manual verify
+                          if (nextStatus == 'delivered' && order.requiresRiderVerification && _imagePath == null) {
+                             ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('High-value verification required. Please take a photo.'), backgroundColor: Colors.red),
+                            );
+                            return;
+                          }
+
+                          final success = await riderProvider.updateOrderStatus(
+                            order.id, 
+                            nextStatus,
+                            verificationMethod: 'physical_id',
+                            imagePath: _imagePath
+                          );
                           if (success && context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text('Status updated to ${nextStatus.replaceAll('_', ' ')}'), backgroundColor: Colors.green),
@@ -95,6 +136,73 @@ class DeliveryDetailsScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildVerificationSection(BuildContext context, OrderModel order) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isRequired = order.requiresRiderVerification;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isRequired ? AppTheme.primaryColor.withValues(alpha: 0.05) : (isDark ? Theme.of(context).cardColor : Colors.white),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isRequired ? AppTheme.primaryColor.withValues(alpha: 0.2) : (isDark ? Colors.white10 : Colors.grey.shade100)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(Icons.shield_rounded, color: isRequired ? AppTheme.primaryColor : Colors.grey, size: 24),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(isRequired ? 'MANDATORY VERIFICATION' : 'OPTIONAL VERIFICATION', 
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: isRequired ? AppTheme.primaryColor : Colors.grey)),
+                    Text(isRequired ? 'Required for high-value orders' : 'Manual ID check recommended',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          if (_imagePath != null) 
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.file(
+                File(_imagePath!), 
+                height: 150, 
+                width: double.infinity, 
+                fit: BoxFit.cover
+              ),
+            )
+          else
+            InkWell(
+              onTap: _takeVerificationPhoto,
+              child: Container(
+                height: 100,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200, style: BorderStyle.solid),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.camera_alt_rounded, color: isRequired ? AppTheme.primaryColor : Colors.grey, size: 32),
+                    const SizedBox(height: 8),
+                    Text('Capture ID Photo', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: isRequired ? AppTheme.primaryColor : Colors.grey)),
+                  ],
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

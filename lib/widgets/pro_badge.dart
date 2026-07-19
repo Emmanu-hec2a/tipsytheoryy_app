@@ -15,8 +15,13 @@ class ProBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Default to Tipsy Deep Green (Home Header color) if no color is provided
-    final badgeColor = color ?? const Color(0xFF0D3B30);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Light Theme: Original Forest Green (#0D3B30)
+    // Dark Theme: Meta Verified Blue (#0081FB) - Recognizable & Professional
+    final defaultBadgeColor = isDark ? const Color(0xFF0081FB) : const Color(0xFF0D3B30);
+    
+    final badgeColor = color ?? defaultBadgeColor;
     final checkColor = iconColor ?? Colors.white;
 
     return CustomPaint(

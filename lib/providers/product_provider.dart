@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../core/api_client.dart';
 import '../models/product_model.dart';
@@ -19,6 +21,9 @@ class ProductProvider with ChangeNotifier {
 
   String _selectedCategory = 'All';
   bool _isLoading = false;
+  bool _isFeaturedLoading = false;
+  bool _isStoresLoading = false;
+  bool _isCategoriesLoading = false;
   bool _isSearching = false;
   bool _isProOnly = false;
   String? _error;
@@ -35,67 +40,163 @@ class ProductProvider with ChangeNotifier {
 
   String get selectedCategory => _selectedCategory;
   bool get isLoading => _isLoading;
+  bool get isFeaturedLoading => _isFeaturedLoading;
+  bool get isStoresLoading => _isStoresLoading;
+  bool get isCategoriesLoading => _isCategoriesLoading;
   bool get isSearching => _isSearching;
   bool get isProOnly => _isProOnly;
   String? get error => _error;
+
+  bool get isHomeLoading => _isFeaturedLoading || _isStoresLoading || _isCategoriesLoading;
+
+  // --- 📦 OFFLINE PERSISTENCE ---
+
+  Future<void> loadCachedHomeData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Load Featured Products
+      final String? featuredJson = prefs.getString('cached_featured_products');
+      if (featuredJson != null) {
+        final List data = json.decode(featuredJson);
+        _featuredProducts = data.map((j) => ProductModel.fromJson(j)).toList();
+      }
+
+      // Load Popular Stores
+      final String? storesJson = prefs.getString('cached_popular_stores');
+      if (storesJson != null) {
+        final List data = json.decode(storesJson);
+        _popularStores = data.map((j) => StoreModel.fromJson(j)).toList();
+      }
+
+      // Load Categories
+      final String? categoriesJson = prefs.getString('cached_categories');
+      if (categoriesJson != null) {
+        final List data = json.decode(categoriesJson);
+        _categories = data.map((j) => CategoryModel.fromJson(j)).toList();
+      }
+
+      if (featuredJson != null || storesJson != null || categoriesJson != null) {
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint("Error loading cached data: $e");
+    }
+  }
+
+  Future<void> loadCachedStoreProducts(int storeId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? cachedJson = prefs.getString('cached_products_store_$storeId');
+      if (cachedJson != null) {
+        final List data = json.decode(cachedJson);
+        _storeProducts = data.map((j) => ProductModel.fromJson(j)).toList();
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint("Error loading cached store products: $e");
+    }
+  }
+
+  Future<void> _cacheData(String key, List<dynamic> list) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String jsonString = json.encode(list.map((item) => item.toJson()).toList());
+      await prefs.setString(key, jsonString);
+    } catch (e) {
+      debugPrint("Error caching data ($key): $e");
+    }
+  }
+
+  // --- 🌐 API FETCHING ---
 
   void toggleProOnly(double? lat, double? lng) {
     _isProOnly = !_isProOnly;
     fetchHomeData(lat: lat, lng: lng);
   }
 
-  Future<void> fetchHomeData({double? lat, double? lng}) async {
+  Future<void> fetchHomeData({double? lat, double? lng, int? limit}) async {
     // 🛡️ Guard: Only fetch if the user is a customer
     final role = await _storage.read(key: 'role');
     if (role != 'customer') return;
 
-    _isLoading = true;
+    _isLoading = true; // Legacy support
+    _isFeaturedLoading = true;
+    _isStoresLoading = true;
+    _isCategoriesLoading = true;
     _error = null;
     notifyListeners();
 
-    try {
-      String storesPath = 'customer/stores/';
-      List<String> queryParams = [];
-      if (lat != null && lng != null) {
-        queryParams.add("lat=$lat");
-        queryParams.add("lng=$lng");
-      }
-      if (_isProOnly) {
-        queryParams.add("is_pro_only=true");
-      }
-
-      if (queryParams.isNotEmpty) {
-        storesPath += "?${queryParams.join('&')}";
-      }
-
-      final responses = await Future.wait([
-        _apiClient.get('customer/products/?is_featured=true'),
-        _apiClient.get(storesPath),
-        _apiClient.get('customer/categories/'),
-      ]);
-
-      if (responses[0].statusCode == 200) {
-        final List data = responses[0].data;
+    // 1. Fetch Featured Products
+    _apiClient.get('customer/products/?is_featured=true').then((response) {
+      if (response.statusCode == 200) {
+        final List data = response.data;
         _featuredProducts = data.map((json) => ProductModel.fromJson(json)).toList();
         _prefetchImages(_featuredProducts.map((p) => p.image).whereType<String>().toList());
+        _cacheData('cached_featured_products', _featuredProducts);
       }
+      _isFeaturedLoading = false;
+      _checkOverallLoading();
+      notifyListeners();
+    }).catchError((e) {
+      _isFeaturedLoading = false;
+      _checkOverallLoading();
+      notifyListeners();
+    });
 
-      if (responses[1].statusCode == 200) {
-        final List data = responses[1].data;
+    // 2. Fetch Stores
+    String storesPath = 'customer/stores/';
+    List<String> queryParams = [];
+    if (lat != null && lng != null) {
+      queryParams.add("lat=$lat");
+      queryParams.add("lng=$lng");
+    }
+    if (_isProOnly) {
+      queryParams.add("is_pro_only=true");
+    }
+    if (limit != null) {
+      queryParams.add("limit=$limit");
+    }
+    if (queryParams.isNotEmpty) {
+      storesPath += "?${queryParams.join('&')}";
+    }
+
+    _apiClient.get(storesPath).then((response) {
+      if (response.statusCode == 200) {
+        final List data = response.data;
         _popularStores = data.map((json) => StoreModel.fromJson(json)).toList();
         _prefetchImages(_popularStores.map((s) => s.logo).whereType<String>().toList());
+        _cacheData('cached_popular_stores', _popularStores);
       }
-
-      if (responses[2].statusCode == 200) {
-        final List data = responses[2].data;
-        _categories = data.map((json) => CategoryModel.fromJson(json)).toList();
-      }
-    } catch (e) {
-      _error = "Failed to load home data.";
-      print("Home data error: $e");
-    } finally {
-      _isLoading = false;
+      _isStoresLoading = false;
+      _checkOverallLoading();
       notifyListeners();
+    }).catchError((e) {
+      _isStoresLoading = false;
+      _checkOverallLoading();
+      notifyListeners();
+    });
+
+    // 3. Fetch Categories
+    _apiClient.get('customer/categories/').then((response) {
+      if (response.statusCode == 200) {
+        final List data = response.data;
+        _categories = data.map((json) => CategoryModel.fromJson(json)).toList();
+        _cacheData('cached_categories', _categories);
+      }
+      _isCategoriesLoading = false;
+      _checkOverallLoading();
+      notifyListeners();
+    }).catchError((e) {
+      _isCategoriesLoading = false;
+      _checkOverallLoading();
+      notifyListeners();
+    });
+  }
+
+  void _checkOverallLoading() {
+    if (!_isFeaturedLoading && !_isStoresLoading && !_isCategoriesLoading) {
+      _isLoading = false;
     }
   }
 
@@ -107,8 +208,10 @@ class ProductProvider with ChangeNotifier {
   }
 
   Future<void> fetchStoreProducts(int storeId) async {
-    _isLoading = true;
-    _storeProducts = [];
+    // 🛡️ Pre-load from cache for instant UI in offline mode
+    await loadCachedStoreProducts(storeId);
+
+    _isLoading = _storeProducts.isEmpty; // Only show spinner if we have nothing cached
     notifyListeners();
 
     try {
@@ -116,9 +219,13 @@ class ProductProvider with ChangeNotifier {
       if (response.statusCode == 200) {
         final List data = response.data;
         _storeProducts = data.map((json) => ProductModel.fromJson(json)).toList();
+        
+        // 💾 Update cache for next time
+        _cacheData('cached_products_store_$storeId', _storeProducts);
       }
     } catch (e) {
       print("Store products fetch error: $e");
+      _error = "Could not update menu. Showing offline version.";
     } finally {
       _isLoading = false;
       notifyListeners();

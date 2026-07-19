@@ -89,7 +89,8 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen> with Widget
                   title: 'Payment failed',
                   message: 'Your payment could not be completed. Please ensure you have sufficient funds and try again.',
                   onRetry: () {
-                    Navigator.pop(context);
+                    // Perform a real retry by re-initiating the payment
+                    _performRealRetry();
                   },
                   onGoHome: () => Navigator.of(context).popUntil((route) => route.isFirst),
                 ),
@@ -109,6 +110,42 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen> with Widget
       if (mounted) {
         setState(() => _isChecking = false);
       }
+    }
+  }
+
+  Future<void> _performRealRetry() async {
+    setState(() => _isChecking = true);
+    try {
+      final response = await _apiClient.post('customer/orders/retry-payment/', data: {
+        'order_number': widget.orderNumber,
+        // We could also pass a phone here if we wanted to let them change it on retry
+      });
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          // Restart this screen with the new ID
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => PaymentPendingScreen(
+                orderId: widget.orderId,
+                orderNumber: widget.orderNumber,
+                checkoutRequestId: response.data['checkout_request_id'],
+              ),
+            ),
+          );
+        }
+      } else {
+        throw Exception(response.data['error'] ?? 'Retry failed');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Retry failed: $e')));
+        // Take them home if even retry fails
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    } finally {
+      if (mounted) setState(() => _isChecking = false);
     }
   }
 

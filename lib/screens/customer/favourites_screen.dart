@@ -4,6 +4,7 @@ import '../../core/theme.dart';
 import '../../providers/favourite_provider.dart';
 import '../../widgets/store_card.dart';
 import 'store_detail_screen.dart';
+import 'stores_list_screen.dart';
 
 class FavouritesScreen extends StatefulWidget {
   const FavouritesScreen({super.key});
@@ -87,7 +88,13 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
           ),
           const SizedBox(height: 32),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => StoresListScreen()),
+              );
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryColor,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

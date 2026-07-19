@@ -194,21 +194,30 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
         Marker(
           markerId: const MarkerId('store'),
           position: storePos,
-          infoWindow: InfoWindow(title: order.storeName ?? 'Store'),
+          infoWindow: InfoWindow(
+            title: order.storeName ?? 'Pickup Store',
+            snippet: isHeadingToPickup ? 'Head here for pickup' : 'Store Location',
+          ),
           icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
         ),
       if (customerPos != null)
         Marker(
           markerId: const MarkerId('customer'),
           position: customerPos,
-          infoWindow: InfoWindow(title: order.customerName ?? 'Customer'),
+          infoWindow: InfoWindow(
+            title: order.customerName ?? 'Customer',
+            snippet: isHeadingToPickup ? 'Delivery Destination' : 'Drop-off here',
+          ),
           icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
         ),
       if (riderPos != null)
         Marker(
           markerId: const MarkerId('rider'),
           position: riderPos,
-          infoWindow: const InfoWindow(title: 'You (Rider)'),
+          infoWindow: const InfoWindow(
+            title: 'You',
+            snippet: 'Rider Location',
+          ),
           icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
         ),
     };

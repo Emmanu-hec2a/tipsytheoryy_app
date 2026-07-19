@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:geolocator/geolocator.dart';
 import '../models/product_model.dart';
 
 class CartItem {
@@ -27,6 +28,11 @@ class CartProvider with ChangeNotifier {
   double _merchantDeliveryFee = 0.0;
   int? _activeStoreId;
   String? _activeStoreName;
+  double? _activeStoreLat;
+  double? _activeStoreLng;
+  double? _activeStoreRadius;
+  String? _appliedPromoCode;
+  double _discountAmount = 0.0;
 
   CartProvider() {
     _loadCachedCart();
@@ -35,6 +41,11 @@ class CartProvider with ChangeNotifier {
   List<CartItem> get items => _items;
   int? get activeStoreId => _activeStoreId;
   String? get activeStoreName => _activeStoreName;
+  double? get activeStoreLat => _activeStoreLat;
+  double? get activeStoreLng => _activeStoreLng;
+  double? get activeStoreRadius => _activeStoreRadius;
+  String? get appliedPromoCode => _appliedPromoCode;
+  double get discountAmount => _discountAmount;
 
   int get itemCount => _items.fold(0, (sum, item) => sum + item.quantity);
 
@@ -42,7 +53,7 @@ class CartProvider with ChangeNotifier {
 
   double get deliveryFee => _items.isEmpty ? 0.0 : _merchantDeliveryFee;
   
-  double get total => subtotal + deliveryFee;
+  double get total => (subtotal + deliveryFee - _discountAmount).clamp(0, double.infinity);
 
   Future<void> _loadCachedCart() async {
     final prefs = await SharedPreferences.getInstance();
@@ -51,6 +62,9 @@ class CartProvider with ChangeNotifier {
       final decoded = jsonDecode(cartData);
       _activeStoreId = decoded['activeStoreId'];
       _activeStoreName = decoded['activeStoreName'];
+      _activeStoreLat = decoded['activeStoreLat'];
+      _activeStoreLng = decoded['activeStoreLng'];
+      _activeStoreRadius = decoded['activeStoreRadius'];
       _merchantDeliveryFee = decoded['deliveryFee'] ?? 0.0;
       
       final List itemsList = decoded['items'];
@@ -65,13 +79,28 @@ class CartProvider with ChangeNotifier {
     final cartData = jsonEncode({
       'activeStoreId': _activeStoreId,
       'activeStoreName': _activeStoreName,
+      'activeStoreLat': _activeStoreLat,
+      'activeStoreLng': _activeStoreLng,
+      'activeStoreRadius': _activeStoreRadius,
       'deliveryFee': _merchantDeliveryFee,
       'items': _items.map((i) => i.toJson()).toList(),
     });
     await prefs.setString('user_cart', cartData);
   }
 
-  void addToCart(ProductModel product, {double? deliveryFee, String? storeName}) {
+  void applyPromo(String code, double discount) {
+    _appliedPromoCode = code;
+    _discountAmount = discount;
+    notifyListeners();
+  }
+
+  void removePromo() {
+    _appliedPromoCode = null;
+    _discountAmount = 0.0;
+    notifyListeners();
+  }
+
+  void addToCart(ProductModel product, {double? deliveryFee, String? storeName, double? storeLat, double? storeLng, double? storeRadius}) {
     // If cart has items from another store, we don't add directly. 
     // The UI should handle showing a dialog to clear cart first.
     if (_items.isNotEmpty && _activeStoreId != null && _activeStoreId != product.storeId) {
@@ -82,6 +111,9 @@ class CartProvider with ChangeNotifier {
     if (_items.isEmpty) {
       _activeStoreId = product.storeId;
       _activeStoreName = storeName;
+      _activeStoreLat = storeLat;
+      _activeStoreLng = storeLng;
+      _activeStoreRadius = storeRadius;
       if (deliveryFee != null) {
         _merchantDeliveryFee = deliveryFee;
       }
@@ -110,6 +142,9 @@ class CartProvider with ChangeNotifier {
           _merchantDeliveryFee = 0.0;
           _activeStoreId = null;
           _activeStoreName = null;
+          _activeStoreLat = null;
+          _activeStoreLng = null;
+          _activeStoreRadius = null;
         }
       } else {
         _items[index].quantity = quantity;
@@ -125,6 +160,9 @@ class CartProvider with ChangeNotifier {
       _merchantDeliveryFee = 0.0;
       _activeStoreId = null;
       _activeStoreName = null;
+      _activeStoreLat = null;
+      _activeStoreLng = null;
+      _activeStoreRadius = null;
     }
     _saveCart();
     notifyListeners();
@@ -135,6 +173,26 @@ class CartProvider with ChangeNotifier {
     _merchantDeliveryFee = 0.0;
     _activeStoreId = null;
     _activeStoreName = null;
+    _activeStoreLat = null;
+    _activeStoreLng = null;
+    _activeStoreRadius = null;
+    _appliedPromoCode = null;
+    _discountAmount = 0.0;
+    _saveCart();
+    notifyListeners();
+  }
+
+  void reorder(List<CartItem> newItems, {double? deliveryFee, String? storeName, int? storeId, double? storeLat, double? storeLng, double? storeRadius}) {
+    _items.clear();
+    _items.addAll(newItems);
+    _activeStoreId = storeId;
+    _activeStoreName = storeName;
+    _activeStoreLat = storeLat;
+    _activeStoreLng = storeLng;
+    _activeStoreRadius = storeRadius;
+    if (deliveryFee != null) {
+      _merchantDeliveryFee = deliveryFee;
+    }
     _saveCart();
     notifyListeners();
   }
@@ -143,6 +201,34 @@ class CartProvider with ChangeNotifier {
   void setDeliveryFee(double fee) {
     _merchantDeliveryFee = fee;
     _saveCart();
+    notifyListeners();
+  }
+
+  double? getDistanceToStore(double? userLat, double? userLng) {
+    if (userLat == null || userLng == null || _activeStoreLat == null || _activeStoreLng == null) {
+      return null;
+    }
+    return Geolocator.distanceBetween(
+      userLat, userLng, _activeStoreLat!, _activeStoreLng!
+    ) / 1000;
+  }
+
+  bool isOutOfRadius(double? userLat, double? userLng) {
+    final dist = getDistanceToStore(userLat, userLng);
+    if (dist == null || _activeStoreRadius == null) return false;
+    return dist > _activeStoreRadius!;
+  }
+
+  void clear() async {
+    _items.clear();
+    _merchantDeliveryFee = 0.0;
+    _activeStoreId = null;
+    _activeStoreName = null;
+    _activeStoreLat = null;
+    _activeStoreLng = null;
+    _activeStoreRadius = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('user_cart');
     notifyListeners();
   }
 }

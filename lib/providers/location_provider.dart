@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:location/location.dart' as loc;
 import 'package:geocoding/geocoding.dart';
 import '../core/api_client.dart';
 import '../models/address_model.dart';
@@ -56,9 +57,16 @@ class LocationProvider with ChangeNotifier {
     // Test if location services are enabled.
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      _error = 'Location services are disabled. Please enable them in settings.';
-      notifyListeners();
-      return false;
+      // 💡 Suggest turning on location services in-app (Android only)
+      final location = loc.Location();
+      serviceEnabled = await location.requestService();
+      
+      if (!serviceEnabled) {
+        // Fallback for iOS or if in-app request fails/is cancelled
+        _error = 'Location services are disabled. Please enable them to continue.';
+        notifyListeners();
+        return false;
+      }
     }
 
     permission = await Geolocator.checkPermission();

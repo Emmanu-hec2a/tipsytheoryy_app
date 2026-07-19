@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:dio/dio.dart';
 import '../core/api_client.dart';
 import '../models/order_model.dart';
 import '../models/user_model.dart';
@@ -167,14 +168,27 @@ class RiderProvider with ChangeNotifier {
     return false;
   }
 
-  Future<bool> updateOrderStatus(int orderId, String newStatus, {String? verificationMethod}) async {
+  Future<bool> updateOrderStatus(int orderId, String newStatus, {String? verificationMethod, String? imagePath}) async {
     _isLoading = true;
     notifyListeners();
     try {
-      final response = await _apiClient.patch('rider/orders/$orderId/status/', data: {
-        'status': newStatus,
-        if (verificationMethod != null) 'verification_method': verificationMethod,
-      });
+      dynamic data;
+      
+      if (imagePath != null) {
+        // Use FormData for file upload
+        data = FormData.fromMap({
+          'status': newStatus,
+          if (verificationMethod != null) 'verification_method': verificationMethod,
+          'verification_image': await MultipartFile.fromFile(imagePath, filename: 'verify.jpg'),
+        });
+      } else {
+        data = {
+          'status': newStatus,
+          if (verificationMethod != null) 'verification_method': verificationMethod,
+        };
+      }
+
+      final response = await _apiClient.patch('rider/orders/$orderId/status/', data: data);
       if (response.statusCode == 200) {
         await _pollData();
         return true;
@@ -193,5 +207,16 @@ class RiderProvider with ChangeNotifier {
   void dispose() {
     stopRealtimePolling();
     super.dispose();
+  }
+
+  void clear() {
+    stopRealtimePolling();
+    _riderProfile = null;
+    _orderQueue = [];
+    _deliveryHistory = [];
+    _earningsHistory = [];
+    _earningsSummary = {};
+    _error = null;
+    notifyListeners();
   }
 }

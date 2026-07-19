@@ -11,7 +11,10 @@ import '../../providers/cart_provider.dart';
 import '../../providers/product_provider.dart';
 import '../../providers/location_provider.dart';
 import '../../providers/favourite_provider.dart';
+import '../../providers/promotion_provider.dart';
 import '../../widgets/pro_badge.dart';
+import '../../widgets/product_card.dart';
+import '../../models/promotion_model.dart';
 
 class StoreDetailScreen extends StatefulWidget {
   final StoreModel store;
@@ -30,6 +33,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<ProductProvider>(context, listen: false).fetchStoreProducts(widget.store.id);
+      Provider.of<PromotionProvider>(context, listen: false).fetchPromotions(widget.store.id);
       Provider.of<FavouriteProvider>(context, listen: false).fetchFavourites();
       _calculateLiveDistance();
 
@@ -97,11 +101,13 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
               const SizedBox(height: 16),
               _buildActionChips(),
               const SizedBox(height: 20),
+              _buildOffersCarousel(),
               if (productProvider.isLoading)
                 _buildSkeletonLoading()
               else if (productProvider.storeProducts.isEmpty)
                 _buildEmptyState()
               else ...[
+                _buildStoreFeaturedDeals(productProvider),
                 _buildCategoryFilter(categories),
                 const SizedBox(height: 20),
                 _buildProductGrid(filteredProducts),
@@ -113,6 +119,189 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
       ),
       floatingActionButton: _buildCartFAB(context, cart),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+
+  Widget _buildOffersCarousel() {
+    final promoProvider = Provider.of<PromotionProvider>(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (promoProvider.isLoading) {
+      return Shimmer.fromColors(
+        baseColor: isDark ? AppTheme.darkShimmerBase : Colors.grey.shade100,
+        highlightColor: isDark ? AppTheme.darkShimmerHighlight : Colors.white,
+        child: Container(
+          height: 100,
+          margin: const EdgeInsets.only(bottom: 20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+        ),
+      );
+    }
+
+    if (promoProvider.availablePromotions.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              "Active Offers",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF5722).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(100),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.flash_on_rounded, color: Color(0xFFFF5722), size: 12),
+                  SizedBox(width: 4),
+                  Text(
+                    "LIMITED",
+                    style: TextStyle(
+                      color: Color(0xFFFF5722),
+                      fontSize: 9,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 110,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            itemCount: promoProvider.availablePromotions.length,
+            itemBuilder: (context, index) {
+              final promo = promoProvider.availablePromotions[index];
+              final expiresSoon = promo.endDate.difference(DateTime.now()).inDays < 3;
+              
+              return Container(
+                width: 280,
+                margin: const EdgeInsets.only(right: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? Theme.of(context).cardColor : Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF1F5F9),
+                  ),
+                  boxShadow: isDark ? [] : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.03),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    )
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFF5722), Color(0xFFFF9800)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(Icons.confirmation_num_rounded, color: Colors.white, size: 24),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            promo.title,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 15,
+                              color: isDark ? Colors.white : const Color(0xFF0D3B30),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Text(
+                                promo.code,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 12,
+                                  color: Color(0xFFFF5722),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                width: 4,
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  color: isDark ? Colors.white24 : Colors.grey.shade300,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Min order: KSh ${promo.minOrderAmount.toInt()}',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: isDark ? Colors.white38 : Colors.blueGrey.shade400,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (expiresSoon) ...[
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                Icon(Icons.timer_outlined, size: 10, color: Colors.amber.shade700),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Expires soon',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    color: Colors.amber.shade700,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 24),
+      ],
     );
   }
 
@@ -345,11 +534,14 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
   Widget _buildFavoriteButton() {
     final favProvider = Provider.of<FavouriteProvider>(context);
     final isFav = favProvider.isStoreFavourite(widget.store.id);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return IconButton(
       onPressed: () => favProvider.toggleFavourite(widget.store.id),
       icon: Icon(
         isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-        color: isFav ? const Color(0xFF0D3B30) : const Color(0xFF0F172A),
+        color: isFav 
+          ? (isDark ? AppTheme.accentColor : const Color(0xFF0D3B30)) 
+          : (isDark ? Colors.white38 : const Color(0xFF0F172A)),
       ),
     );
   }
@@ -513,6 +705,11 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
 
   Widget _buildProductGrid(List<ProductModel> products) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final standardProducts = products.where((p) => !p.isFeatured).toList();
+    if (standardProducts.isEmpty && products.any((p) => p.isFeatured)) {
+      return const SizedBox.shrink(); // Handled by featured section
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -587,14 +784,18 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                         final fee = widget.store.dynamicDeliveryFee > 0 
                             ? widget.store.dynamicDeliveryFee 
                             : widget.store.deliveryFee;
-                        cart.addToCart(product, deliveryFee: fee, storeName: widget.store.name);
+                        cart.addToCart(
+                          product, 
+                          deliveryFee: fee, 
+                          storeName: widget.store.name,
+                          storeLat: widget.store.latitude,
+                          storeLng: widget.store.longitude,
+                          storeRadius: widget.store.deliveryRadiusKm,
+                        );
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text('${product.name} added'),
                             duration: const Duration(seconds: 1),
-                            behavior: SnackBarBehavior.floating,
-                            backgroundColor: AppTheme.primaryColor,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                         );
                       },
@@ -675,6 +876,70 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
     );
   }
 
+  Widget _buildStoreFeaturedDeals(ProductProvider provider) {
+    final deals = provider.storeProducts.where((p) => p.isFeatured).toList();
+    if (deals.isEmpty) return const SizedBox.shrink();
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Featured Deals",
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 140,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: deals.length,
+            itemBuilder: (context, index) {
+              final product = deals[index];
+              return Container(
+                width: 280,
+                margin: const EdgeInsets.only(right: 12),
+                child: ProductCard(
+                  product: product,
+                  isVertical: false,
+                  onAdd: () {
+                    final cart = Provider.of<CartProvider>(context, listen: false);
+                    if (cart.isFromDifferentStore(product.storeId)) {
+                      _showClearCartDialog(context, cart, product);
+                      return;
+                    }
+                    final fee = widget.store.dynamicDeliveryFee > 0 
+                        ? widget.store.dynamicDeliveryFee 
+                        : widget.store.deliveryFee;
+                    cart.addToCart(
+                      product, 
+                      deliveryFee: fee, 
+                      storeName: widget.store.name,
+                      storeLat: widget.store.latitude,
+                      storeLng: widget.store.longitude,
+                      storeRadius: widget.store.deliveryRadiusKm,
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('${product.name} added'),
+                        duration: const Duration(seconds: 1),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
   void _showClearCartDialog(BuildContext context, CartProvider cart, ProductModel product) {
     showDialog(
       context: context,
@@ -692,7 +957,14 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
               final fee = widget.store.dynamicDeliveryFee > 0 
                   ? widget.store.dynamicDeliveryFee 
                   : widget.store.deliveryFee;
-              cart.addToCart(product, deliveryFee: fee, storeName: widget.store.name);
+              cart.addToCart(
+                product, 
+                deliveryFee: fee, 
+                storeName: widget.store.name,
+                storeLat: widget.store.latitude,
+                storeLng: widget.store.longitude,
+                storeRadius: widget.store.deliveryRadiusKm,
+              );
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Cart cleared and item added')),

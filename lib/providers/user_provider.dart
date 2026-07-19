@@ -13,6 +13,22 @@ class UserProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
+  // Location Caching
+  String? _cachedAddress;
+  double? _cachedLat;
+  double? _cachedLng;
+
+  String? get cachedAddress => _cachedAddress;
+  double? get cachedLat => _cachedLat;
+  double? get cachedLng => _cachedLng;
+
+  void cacheLocation(String address, double lat, double lng) {
+    _cachedAddress = address;
+    _cachedLat = lat;
+    _cachedLng = lng;
+    notifyListeners();
+  }
+
   UserProvider() {
     _loadCachedProfile();
   }
@@ -131,5 +147,16 @@ class UserProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  void clear() async {
+    _user = null;
+    _error = null;
+    _cachedAddress = null;
+    _cachedLat = null;
+    _cachedLng = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('user_profile');
+    notifyListeners();
   }
 }

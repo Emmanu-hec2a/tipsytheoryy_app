@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme.dart';
+import '../../core/legal_texts.dart';
 import 'legal_content_screen.dart';
 
 class SupportLegalScreen extends StatelessWidget {
@@ -25,26 +26,32 @@ class SupportLegalScreen extends StatelessWidget {
             _buildSection(context, 'GET IN TOUCH', [
               _buildLegalItem(context, Icons.chat_bubble_outline_rounded, 'WhatsApp Support', 'Instant help via WhatsApp', () => _launchWhatsApp()),
               _buildLegalItem(context, Icons.headset_mic_outlined, 'Help Center', 'Speak with our support team', () {}),
-              _buildLegalItem(context, Icons.mail_outline_rounded, 'Email Support', 'support@tipsytheoryy.com', () => _launchEmail()),
-              _buildLegalItem(context, Icons.phone_outlined, 'Call Us', '+254 700 000000', () => _launchPhone()),
+              _buildLegalItem(context, Icons.mail_outline_rounded, 'Email Support', 'petniqueke@gmail.com', () => _launchEmail()),
+              _buildLegalItem(context, Icons.phone_outlined, 'Call Us', '+254 718 2588 21', () => _launchPhone()),
             ]),
             _buildSection(context, 'LEGAL & POLICIES', [
               _buildLegalItem(context, Icons.description_outlined, 'Terms of Service', 'Read our user agreement', () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const LegalContentScreen(
                   title: 'Terms of Service',
-                  content: 'Welcome to TipsyTheoryy. By using our application, you agree to our terms... [Full Terms Content Here]',
+                  content: LegalTexts.customerTerms,
                 )));
               }),
               _buildLegalItem(context, Icons.privacy_tip_outlined, 'Privacy Policy', 'How we handle your data', () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const LegalContentScreen(
                   title: 'Privacy Policy',
-                  content: 'At TipsyTheoryy, your privacy is our priority. We collect minimal data to provide our services... [Full Policy Content Here]',
+                  content: LegalTexts.privacyPolicy,
                 )));
               }),
-              _buildLegalItem(context, Icons.info_outline_rounded, 'Liquor Licenses', 'Verified merchant network', () {
+              _buildLegalItem(context, Icons.info_outline_rounded, 'About TipsyTheoryy', 'Our mission and story', () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const LegalContentScreen(
+                  title: 'About TipsyTheoryy',
+                  content: LegalTexts.aboutUs,
+                )));
+              }),
+              _buildLegalItem(context, Icons.verified_user_outlined, 'Liquor Licenses', 'Verified merchant network', () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const LegalContentScreen(
                   title: 'About Our Licenses',
-                  content: 'All merchants on TipsyTheoryy are fully licensed by the relevant authorities to sell and distribute alcoholic beverages.',
+                  content: 'All merchants on TipsyTheoryy are fully licensed by the relevant authorities to sell and distribute alcoholic beverages. We verify business registrations and liquor licenses for every partner store on our platform.',
                 )));
               }),
             ]),
@@ -96,17 +103,17 @@ class SupportLegalScreen extends StatelessWidget {
   }
 
   void _launchEmail() async {
-    final Uri emailLaunchUri = Uri(scheme: 'mailto', path: 'support@tipsytheoryy.com');
+    final Uri emailLaunchUri = Uri(scheme: 'mailto', path: 'petniqueke@gmail.com');
     if (await canLaunchUrl(emailLaunchUri)) await launchUrl(emailLaunchUri);
   }
 
   void _launchPhone() async {
-    final Uri phoneLaunchUri = Uri(scheme: 'tel', path: '+254700000000');
+    final Uri phoneLaunchUri = Uri(scheme: 'tel', path: '+254718258821');
     if (await canLaunchUrl(phoneLaunchUri)) await launchUrl(phoneLaunchUri);
   }
 
   void _launchWhatsApp() async {
-    final Uri whatsappUri = Uri.parse("https://wa.me/254700000000");
+    final Uri whatsappUri = Uri.parse("https://wa.me/254718258821");
     if (await canLaunchUrl(whatsappUri)) {
       await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
     }

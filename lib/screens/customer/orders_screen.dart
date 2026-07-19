@@ -4,7 +4,9 @@ import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../core/theme.dart';
 import '../../providers/order_provider.dart';
+import '../../providers/cart_provider.dart';
 import '../../models/order_model.dart';
+import '../../models/product_model.dart';
 
 import '../../core/api_client.dart';
 import 'payment_pending_screen.dart';
@@ -74,32 +76,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
 
     if (provider.error != null && orders.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(provider.error!, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: () => provider.fetchOrders(),
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      );
+      return _buildErrorState(provider);
     }
 
     if (orders.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.shopping_bag_outlined, size: 80, color: Colors.grey.shade300),
-            const SizedBox(height: 16),
-            Text('No orders found in $_selectedFilter', style: TextStyle(color: Colors.grey.shade500, fontSize: 16, fontWeight: FontWeight.w600)),
-          ],
-        ),
-      );
+      return _buildEmptyState();
     }
 
     return ListView.builder(
@@ -109,6 +90,121 @@ class _OrdersScreenState extends State<OrdersScreen> {
       itemBuilder: (context, index) {
         return _buildOrderCard(orders[index]);
       },
+    );
+  }
+
+  Widget _buildErrorState(OrderProvider provider) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppTheme.accentColor.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.wifi_off_rounded, size: 48, color: AppTheme.accentColor),
+            ),
+            const SizedBox(height: 32),
+            Text(
+              'Connection Issue',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+                color: isDark ? Colors.white : AppTheme.primaryColor,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              provider.error!,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isDark ? Colors.white38 : Colors.grey.shade600,
+                height: 1.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: 200,
+              child: ElevatedButton(
+                onPressed: () => provider.fetchOrders(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: const Text('RETRY CONNECTION', style: TextStyle(fontWeight: FontWeight.w900)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withValues(alpha: 0.05),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.shopping_bag_outlined, 
+                size: 64, 
+                color: isDark ? Colors.white24 : Colors.grey.shade300
+              ),
+            ),
+            const SizedBox(height: 32),
+            Text(
+              _selectedFilter == 'All' ? 'No orders yet' : 'No $_selectedFilter orders',
+              style: TextStyle(
+                fontSize: 20, 
+                fontWeight: FontWeight.w900, 
+                color: isDark ? Colors.white : AppTheme.primaryColor
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Your future refreshments will appear here once you place an order.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isDark ? Colors.white38 : Colors.grey.shade500, 
+                height: 1.5,
+                fontWeight: FontWeight.w600
+              ),
+            ),
+            const SizedBox(height: 32),
+            if (_selectedFilter == 'All')
+              SizedBox(
+                width: 200,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: const Text('START SHOPPING', style: TextStyle(fontWeight: FontWeight.w900)),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -252,7 +348,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     ),
                   ),
                 )
-              else
+              else if (['pending', 'confirmed', 'assigned', 'picked_up', 'arrived'].contains(order.status.toLowerCase()))
                 Expanded(
                   child: SizedBox(
                     height: 48,
@@ -266,6 +362,21 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         elevation: 0,
                       ),
                       child: const Text('TRACK ORDER', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1)),
+                    ),
+                  ),
+                )
+              else
+                Expanded(
+                  child: SizedBox(
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: () => _reorder(order),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                      ),
+                      child: const Text('REORDER', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1)),
                     ),
                   ),
                 ),
@@ -290,10 +401,55 @@ class _OrdersScreenState extends State<OrdersScreen> {
     );
   }
 
+  Future<void> _reorder(OrderModel order) async {
+    final cart = Provider.of<CartProvider>(context, listen: false);
+    
+    if (cart.items.isNotEmpty) {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Clear Cart?', style: TextStyle(fontWeight: FontWeight.bold)),
+          content: const Text('Reordering will clear your current cart. Continue?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('CANCEL')),
+            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('CONTINUE')),
+          ],
+        ),
+      );
+      if (confirm != true) return;
+    }
+
+    // Convert Order items to Cart items
+    final newItems = order.items.map((it) => CartItem(
+      product: ProductModel(
+        id: it.productId,
+        name: it.productName,
+        price: it.priceAtOrder,
+        storeId: 0, // Not critical for reorder as we overwrite store context
+      ),
+      quantity: it.quantity,
+    )).toList();
+
+    cart.reorder(
+      newItems,
+      storeName: order.storeName,
+      deliveryFee: order.deliveryFee,
+      storeLat: order.storeLatitude,
+      storeLng: order.storeLongitude,
+    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Items added to cart!'), backgroundColor: Colors.green)
+      );
+      Navigator.pushNamed(context, '/cart');
+    }
+  }
+
   Future<void> _retryPayment(OrderModel order) async {
     final apiClient = ApiClient();
     try {
-      final response = await apiClient.post('partner/payments/mpesa/initiate/', data: {
+      final response = await apiClient.post('customer/orders/retry-payment/', data: {
         'order_number': order.orderNumber,
       });
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme.dart';
 import '../../providers/cart_provider.dart';
+import '../../providers/location_provider.dart';
 
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
@@ -9,6 +10,10 @@ class CartScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cart = Provider.of<CartProvider>(context);
+    final locProvider = Provider.of<LocationProvider>(context);
+    final userLat = locProvider.currentAddress?.latitude;
+    final userLng = locProvider.currentAddress?.longitude;
+    final isOutOfRadius = cart.isOutOfRadius(userLat, userLng);
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -43,7 +48,7 @@ class CartScreen extends StatelessWidget {
                     },
                   ),
                 ),
-                _buildOrderSummary(context, cart),
+                _buildOrderSummary(context, cart, isOutOfRadius),
               ],
             ),
     );
@@ -127,7 +132,8 @@ class CartScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildOrderSummary(BuildContext context, CartProvider cart) {
+  Widget _buildOrderSummary(BuildContext context, CartProvider cart, bool isOutOfRadius) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
       decoration: BoxDecoration(
@@ -137,6 +143,33 @@ class CartScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
+          if (isOutOfRadius) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline_rounded, color: Colors.red, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'This store is too far for delivery. Please try another store.',
+                      style: TextStyle(
+                        color: isDark ? Colors.redAccent : Colors.red.shade700,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           _summaryRow(context, 'Subtotal', 'KSh ${cart.subtotal.toStringAsFixed(0)}'),
           const SizedBox(height: 12),
           _summaryRow(context, 'Delivery Fee', 'KSh ${cart.deliveryFee.toStringAsFixed(0)}'),
@@ -148,11 +181,11 @@ class CartScreen extends StatelessWidget {
             height: 56,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
+                backgroundColor: isOutOfRadius ? Colors.grey : AppTheme.primaryColor,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              onPressed: () => Navigator.pushNamed(context, '/checkout'),
+              onPressed: isOutOfRadius ? null : () => Navigator.pushNamed(context, '/checkout'),
               child: const Text('PROCEED TO CHECKOUT', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ),

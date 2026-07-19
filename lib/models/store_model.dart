@@ -10,12 +10,15 @@ class StoreModel {
   final int reviewsCount;
   final double deliveryFee;
   final double dynamicDeliveryFee;
+  final double deliveryRadiusKm;
   final String deliveryTime;
   final double distance;
   final double latitude;
   final double longitude;
   final bool isFavourite;
   final bool isPro;
+  final bool hasActivePromotions;
+  final String? maxPromoDiscount;
   final String? openingTime;
   final String? closingTime;
   final bool isOpen;
@@ -34,12 +37,15 @@ class StoreModel {
     required this.reviewsCount,
     required this.deliveryFee,
     this.dynamicDeliveryFee = 0.0,
+    this.deliveryRadiusKm = 7.0,
     required this.deliveryTime,
     required this.distance,
     required this.latitude,
     required this.longitude,
     this.isFavourite = false,
     this.isPro = false,
+    this.hasActivePromotions = false,
+    this.maxPromoDiscount,
     this.openingTime,
     this.closingTime,
     this.isOpen = true,
@@ -60,17 +66,50 @@ class StoreModel {
       reviewsCount: json['rating_count'] ?? 0,
       deliveryFee: double.tryParse(json['delivery_fee']?.toString() ?? '0.0') ?? 0.0,
       dynamicDeliveryFee: double.tryParse(json['dynamic_delivery_fee']?.toString() ?? '0.0') ?? 0.0,
+      deliveryRadiusKm: double.tryParse(json['delivery_radius_km']?.toString() ?? '7.0') ?? 7.0,
       deliveryTime: '${json['avg_delivery_minutes'] ?? 30} mins',
       distance: double.tryParse(json['distance']?.toString() ?? '0.0') ?? 0.0,
       latitude: double.tryParse(json['latitude']?.toString() ?? '0.0') ?? 0.0,
       longitude: double.tryParse(json['longitude']?.toString() ?? '0.0') ?? 0.0,
       isFavourite: json['is_favourite'] ?? false,
       isPro: json['is_pro'] ?? false,
+      hasActivePromotions: json['has_active_promotions'] ?? false,
+      maxPromoDiscount: json['max_promo_discount'],
       openingTime: json['opening_time'],
       closingTime: json['closing_time'],
       isOpen: json['is_open'] ?? true,
       phone: json['phone'],
       addressString: json['address_string'],
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'shop_name': shopName,
+      'logo': logo,
+      'cover_image': coverImage,
+      'tagline': tagline,
+      'primary_color': primaryColor,
+      'rating': rating,
+      'rating_count': reviewsCount,
+      'delivery_fee': deliveryFee,
+      'dynamic_delivery_fee': dynamicDeliveryFee,
+      'delivery_radius_km': deliveryRadiusKm,
+      'avg_delivery_minutes': int.tryParse(deliveryTime.split(' ')[0]) ?? 30,
+      'distance': distance,
+      'latitude': latitude,
+      'longitude': longitude,
+      'is_favourite': isFavourite,
+      'is_pro': isPro,
+      'has_active_promotions': hasActivePromotions,
+      'max_promo_discount': maxPromoDiscount,
+      'opening_time': openingTime,
+      'closing_time': closingTime,
+      'is_open': isOpen,
+      'phone': phone,
+      'address_string': addressString,
+    };
   }
 }

@@ -19,6 +19,8 @@ import 'providers/user_provider.dart';
 import 'providers/location_provider.dart';
 import 'providers/rider_provider.dart';
 import 'providers/favourite_provider.dart';
+import 'providers/ai_assistant_provider.dart';
+import 'providers/promotion_provider.dart';
 import 'services/notification_service.dart';
 
 void main() async {
@@ -43,6 +45,8 @@ void main() async {
         ChangeNotifierProvider(create: (_) => LocationProvider()),
         ChangeNotifierProvider(create: (_) => RiderProvider()),
         ChangeNotifierProvider(create: (_) => FavouriteProvider()),
+        ChangeNotifierProvider(create: (_) => AIAssistantProvider()),
+        ChangeNotifierProvider(create: (_) => PromotionProvider()),
       ],
       child: const TipsyTheoryyApp(),
     ),

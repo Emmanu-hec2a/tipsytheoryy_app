@@ -9,6 +9,7 @@ class ProductModel {
   final String? category;
   final int storeId;
   final bool isNewArrival;
+  final bool isFeatured;
   final bool isAvailable;
 
   ProductModel({
@@ -22,6 +23,7 @@ class ProductModel {
     this.category,
     required this.storeId,
     this.isNewArrival = false,
+    this.isFeatured = false,
     this.isAvailable = true,
   });
 
@@ -39,6 +41,7 @@ class ProductModel {
       category: json['category_name'] ?? json['category'],
       storeId: json['store'] ?? 0,
       isNewArrival: json['is_new_arrival'] ?? false,
+      isFeatured: json['is_featured'] ?? false,
       isAvailable: json['is_available'] ?? true,
     );
   }
@@ -55,6 +58,7 @@ class ProductModel {
       'category': category,
       'store': storeId,
       'is_new_arrival': isNewArrival,
+      'is_featured': isFeatured,
       'is_available': isAvailable,
     };
   }

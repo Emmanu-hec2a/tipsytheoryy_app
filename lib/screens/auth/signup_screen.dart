@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../core/theme.dart';
+import '../../core/legal_texts.dart';
 import '../customer/customer_shell.dart';
+import '../customer/legal_content_screen.dart';
 import '../rider/rider_shell.dart';
 import 'login_screen.dart';
 
@@ -349,6 +352,43 @@ class _SignupScreenState extends State<SignupScreen> {
                               'CREATE ACCOUNT',
                               style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1),
                             ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: Text.rich(
+                          TextSpan(
+                            text: 'By signing up, you agree to our ',
+                            style: TextStyle(color: isDark ? Colors.white38 : Colors.grey, fontSize: 11, fontWeight: FontWeight.w500),
+                            children: [
+                              TextSpan(
+                                text: 'T&C',
+                                style: TextStyle(color: isDark ? AppTheme.accentColor : AppTheme.primaryColor, fontWeight: FontWeight.bold, decoration: TextDecoration.underline),
+                                recognizer: TapGestureRecognizer()..onTap = () {
+                                  Navigator.push(context, MaterialPageRoute(builder: (_) => LegalContentScreen(
+                                    title: widget.role == 'rider' ? 'Rider Agreement' : 'Customer Terms',
+                                    content: widget.role == 'rider' ? LegalTexts.riderAgreement : LegalTexts.customerTerms,
+                                  )));
+                                },
+                              ),
+                              const TextSpan(text: ' and have read our '),
+                              TextSpan(
+                                text: 'Privacy Policy',
+                                style: TextStyle(color: isDark ? AppTheme.accentColor : AppTheme.primaryColor, fontWeight: FontWeight.bold, decoration: TextDecoration.underline),
+                                recognizer: TapGestureRecognizer()..onTap = () {
+                                  Navigator.push(context, MaterialPageRoute(builder: (_) => const LegalContentScreen(
+                                    title: 'Privacy Policy',
+                                    content: LegalTexts.privacyPolicy,
+                                  )));
+                                },
+                              ),
+                            ],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                     ),
                     

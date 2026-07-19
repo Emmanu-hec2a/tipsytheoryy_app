@@ -49,6 +49,40 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _handleGoogleSignIn() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final success = await authProvider.signInWithGoogle();
+    _handleSocialResult(success);
+  }
+
+  Future<void> _handleAppleSignIn() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final success = await authProvider.signInWithApple();
+    _handleSocialResult(success);
+  }
+
+  void _handleSocialResult(bool success) {
+    if (success && mounted) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      Widget nextShell = authProvider.role == 'rider' 
+        ? const RiderShell() 
+        : const CustomerShell();
+        
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => nextShell),
+        (route) => false,
+      );
+    } else if (mounted) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.status == AuthStatus.failed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(authProvider.errorMessage ?? 'Authentication Failed')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -215,6 +249,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     SvgPicture.string(googleSvg, height: 22),
                     isDark ? Colors.white70 : Colors.black87,
                     isDark,
+                    _handleGoogleSignIn,
                   ),
                   const SizedBox(height: 12),
                   _buildSocialButton(
@@ -222,6 +257,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Icon(Icons.apple, size: 24, color: isDark ? Colors.white70 : Colors.black),
                     isDark ? Colors.white70 : Colors.black87,
                     isDark,
+                    _handleAppleSignIn,
                   ),
                   const SizedBox(height: 20),
                 ],
@@ -240,12 +276,12 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildSocialButton(String text, Widget icon, Color color, bool isDark) {
+  Widget _buildSocialButton(String text, Widget icon, Color color, bool isDark, VoidCallback onPressed) {
     return SizedBox(
       width: double.infinity,
       height: 55,
       child: OutlinedButton.icon(
-        onPressed: () {},
+        onPressed: onPressed,
         icon: icon,
         label: Text(text, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
         style: OutlinedButton.styleFrom(

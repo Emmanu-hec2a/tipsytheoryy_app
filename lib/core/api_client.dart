@@ -9,6 +9,10 @@ class ApiClient {
 
   // Global cache store to be shared across ApiClient instances
   static final _cacheStore = MemCacheStore();
+  
+  void clearCache() {
+    _cacheStore.clean();
+  }
   static final _cacheOptions = CacheOptions(
     store: _cacheStore,
     policy: CachePolicy.refreshForceCache, // Tries to fetch from network, falls back to cache on error
@@ -19,9 +23,8 @@ class ApiClient {
 
   // Use 10.0.2.2 for Android Emulator to hit localhost
   // Use localhost for iOS Simulator
-  // static const String baseUrl = 'https://tipsytheoryy.com/api/v1/';
-  // If 10.0.2.2 fails, try the actual machine IP or ensure Django is running on 0.0.0.0
-  static final String baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://localhost:8000/api/v1/';
+  static const String _prodUrl = 'https://api.tipsytheoryy.com/api/v1/';
+  static final String baseUrl = dotenv.env['API_BASE_URL'] ?? _prodUrl;
 
   ApiClient() : dio = Dio(BaseOptions(
     baseUrl: baseUrl,

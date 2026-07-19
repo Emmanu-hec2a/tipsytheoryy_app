@@ -380,21 +380,30 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         Marker(
           markerId: const MarkerId('store'),
           position: storePos,
-          infoWindow: const InfoWindow(title: 'Pickup Store'),
+          infoWindow: InfoWindow(
+            title: order.storeName ?? 'Liquor Store',
+            snippet: 'Pickup Point',
+          ),
           icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
         ),
       if (customerPos != null)
         Marker(
           markerId: const MarkerId('customer'),
           position: customerPos,
-          infoWindow: const InfoWindow(title: 'Delivery Address'),
+          infoWindow: const InfoWindow(
+            title: 'My Location',
+            snippet: 'Delivery Destination',
+          ),
           icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
         ),
       if (riderPos != null)
         Marker(
           markerId: const MarkerId('rider'),
           position: riderPos,
-          infoWindow: InfoWindow(title: order.riderName ?? 'Rider'),
+          infoWindow: InfoWindow(
+            title: order.riderName ?? 'Your Rider',
+            snippet: 'On the way to you',
+          ),
           icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
         ),
     };
@@ -429,9 +438,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
             },
             onMapCreated: (controller) {
               _mapController = controller;
-              if (riderPos != null && customerPos != null) {
-                _fitBounds(controller, [riderPos, customerPos, if (storePos != null) storePos]);
-              }
+              _updateMapCamera();
             },
             polylines: {
               if (_polylinePoints.isNotEmpty)
@@ -498,6 +505,9 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     LatLng? riderPos = (order.riderLatitude != null && order.riderLatitude != 0)
         ? LatLng(order.riderLatitude!, order.riderLongitude!)
         : null;
+    LatLng? storePos = (order.storeLatitude != null && order.storeLatitude != 0)
+        ? LatLng(order.storeLatitude!, order.storeLongitude!)
+        : null;
     LatLng? customerPos = (order.latitude != null && order.latitude != 0)
         ? LatLng(order.latitude!, order.longitude!)
         : null;
@@ -507,6 +517,10 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         _fitBounds(_mapController!, [riderPos, customerPos]);
         _lastRiderPos = riderPos;
       }
+    } else if (storePos != null && customerPos != null && _lastRiderPos == null) {
+      // First time load with no rider yet
+      _fitBounds(_mapController!, [storePos, customerPos]);
+      _lastRiderPos = const LatLng(0, 0); // Sentinel to prevent repeated fits if no rider
     }
   }
 

@@ -7,6 +7,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
+import '../../providers/cart_provider.dart';
+import '../../providers/order_provider.dart';
+import '../../providers/rider_provider.dart';
 import '../../models/user_model.dart';
 import 'saved_addresses_screen.dart';
 import 'payment_methods_screen.dart';
@@ -425,7 +428,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
           ElevatedButton(
             onPressed: () async {
-              await auth.logout();
+              await auth.logout(onLogout: () {
+                Provider.of<UserProvider>(context, listen: false).clear();
+                Provider.of<CartProvider>(context, listen: false).clear();
+                Provider.of<OrderProvider>(context, listen: false).clear();
+                Provider.of<RiderProvider>(context, listen: false).clear();
+              });
               if (context.mounted) Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
@@ -555,41 +563,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
           color: Theme.of(context).cardColor,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Edit Profile', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: isDark ? Colors.white : AppTheme.primaryColor)),
-            const SizedBox(height: 24),
-            _buildTextField('First Name', firstNameController, isDark),
-            const SizedBox(height: 16),
-            _buildTextField('Last Name', lastNameController, isDark),
-            const SizedBox(height: 16),
-            _buildTextField('Phone Number', phoneController, isDark),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: ElevatedButton(
-                onPressed: () async {
-                  final success = await provider.updateProfile(
-                    data: {
-                      'first_name': firstNameController.text,
-                      'last_name': lastNameController.text,
-                      'phone': phoneController.text,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Edit Profile', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: isDark ? Colors.white : AppTheme.primaryColor)),
+              const SizedBox(height: 24),
+              _buildTextField('First Name', firstNameController, isDark),
+              const SizedBox(height: 16),
+              _buildTextField('Last Name', lastNameController, isDark),
+              const SizedBox(height: 16),
+              _buildTextField('Phone Number', phoneController, isDark),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    final success = await provider.updateProfile(
+                      data: {
+                        'first_name': firstNameController.text,
+                        'last_name': lastNameController.text,
+                        'phone': phoneController.text,
+                      }
+                    );
+                    if (success && context.mounted) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated successfully!'), backgroundColor: Colors.green));
                     }
-                  );
-                  if (success && context.mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated successfully!'), backgroundColor: Colors.green));
-                  }
-                },
-                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
-                child: const Text('SAVE CHANGES', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+                  child: const Text('SAVE CHANGES', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
+                ),
               ),
-            ),
-            const SizedBox(height: 40),
-          ],
+              const SizedBox(height: 40),
+            ],
+          ),
         ),
       ),
     );

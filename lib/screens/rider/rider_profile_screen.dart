@@ -3,10 +3,14 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme.dart';
+import '../../core/legal_texts.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/rider_provider.dart';
+import '../../providers/cart_provider.dart';
+import '../../providers/order_provider.dart';
 import '../../models/user_model.dart';
+import '../customer/legal_content_screen.dart';
 import 'delivery_complete_screen.dart';
 
 class RiderProfileScreen extends StatefulWidget {
@@ -374,7 +378,12 @@ class _RiderProfileScreenState extends State<RiderProfileScreen> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold))),
           ElevatedButton(
             onPressed: () async {
-              await auth.logout();
+              await auth.logout(onLogout: () {
+                Provider.of<UserProvider>(context, listen: false).clear();
+                Provider.of<CartProvider>(context, listen: false).clear();
+                Provider.of<OrderProvider>(context, listen: false).clear();
+                Provider.of<RiderProvider>(context, listen: false).clear();
+              });
               if (context.mounted) Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
@@ -393,17 +402,17 @@ class _RiderProfileScreenState extends State<RiderProfileScreen> {
     }
   }
 
-  void _viewAgreement() async {
-    final url = Uri.parse("https://tipsytheoryy.com/legal/rider-agreement/");
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
+  void _viewAgreement() {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => const LegalContentScreen(
+      title: 'Rider Agreement',
+      content: LegalTexts.riderAgreement,
+    )));
   }
 
-  void _viewPolicy() async {
-    final url = Uri.parse("https://tipsytheoryy.com/legal/privacy-policy/");
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
+  void _viewPolicy() {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => const LegalContentScreen(
+      title: 'Privacy Policy',
+      content: LegalTexts.privacyPolicy,
+    )));
   }
 }

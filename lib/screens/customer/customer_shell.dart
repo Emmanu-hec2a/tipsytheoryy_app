@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../widgets/floating_nav_bar.dart';
+import '../../widgets/theory_ai_fab.dart';
 import 'home_screen.dart';
 import 'stores_list_screen.dart';
 import 'orders_screen.dart';
@@ -28,6 +29,7 @@ class _CustomerShellState extends State<CustomerShell> {
     return Scaffold(
       extendBody: true, // Crucial for floating navbar to show screen content behind it
       body: _screens[_selectedIndex],
+      floatingActionButton: const TheoryAIFab(),
       bottomNavigationBar: FloatingPillNavBar(
         selectedIndex: _selectedIndex,
         onTap: (index) => setState(() => _selectedIndex = index),

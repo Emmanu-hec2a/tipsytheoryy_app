@@ -43,6 +43,11 @@ class AppTheme {
         onSurface: lightTextPrimary,
         brightness: Brightness.light,
       ),
+      snackBarTheme: const SnackBarThemeData(
+        backgroundColor: primaryColor,
+        contentTextStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        behavior: SnackBarBehavior.floating,
+      ),
       elevatedButtonTheme: _elevatedButtonTheme(Brightness.light),
       inputDecorationTheme: _inputDecorationTheme(Brightness.light),
       textTheme: _textTheme(Brightness.light),
@@ -63,6 +68,11 @@ class AppTheme {
         surface: darkSurface,
         onSurface: darkTextPrimary,
         brightness: Brightness.dark,
+      ),
+      snackBarTheme: const SnackBarThemeData(
+        backgroundColor: accentColor,
+        contentTextStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        behavior: SnackBarBehavior.floating,
       ),
       elevatedButtonTheme: _elevatedButtonTheme(Brightness.dark),
       inputDecorationTheme: _inputDecorationTheme(Brightness.dark),
