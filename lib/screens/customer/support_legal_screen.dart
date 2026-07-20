@@ -25,7 +25,7 @@ class SupportLegalScreen extends StatelessWidget {
             const SizedBox(height: 24),
             _buildSection(context, 'GET IN TOUCH', [
               _buildLegalItem(context, Icons.chat_bubble_outline_rounded, 'WhatsApp Support', 'Instant help via WhatsApp', () => _launchWhatsApp()),
-              _buildLegalItem(context, Icons.headset_mic_outlined, 'Help Center', 'Speak with our support team', () {}),
+              _buildLegalItem(context, Icons.headset_mic_outlined, 'Help Center', 'Speak with our support team', () => _launchPhone()),
               _buildLegalItem(context, Icons.mail_outline_rounded, 'Email Support', 'petniqueke@gmail.com', () => _launchEmail()),
               _buildLegalItem(context, Icons.phone_outlined, 'Call Us', '+254 718 2588 21', () => _launchPhone()),
             ]),
@@ -104,12 +104,16 @@ class SupportLegalScreen extends StatelessWidget {
 
   void _launchEmail() async {
     final Uri emailLaunchUri = Uri(scheme: 'mailto', path: 'petniqueke@gmail.com');
-    if (await canLaunchUrl(emailLaunchUri)) await launchUrl(emailLaunchUri);
+    if (await canLaunchUrl(emailLaunchUri)) {
+      await launchUrl(emailLaunchUri, mode: LaunchMode.externalApplication);
+    }
   }
 
   void _launchPhone() async {
     final Uri phoneLaunchUri = Uri(scheme: 'tel', path: '+254718258821');
-    if (await canLaunchUrl(phoneLaunchUri)) await launchUrl(phoneLaunchUri);
+    if (await canLaunchUrl(phoneLaunchUri)) {
+      await launchUrl(phoneLaunchUri, mode: LaunchMode.externalApplication);
+    }
   }
 
   void _launchWhatsApp() async {

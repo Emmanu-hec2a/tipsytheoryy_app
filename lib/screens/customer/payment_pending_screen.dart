@@ -7,6 +7,7 @@ import '../../core/theme.dart';
 import '../../models/order_model.dart';
 import 'order_tracking_screen.dart';
 import 'payment_result_screen.dart';
+import 'customer_shell.dart';
 
 class PaymentPendingScreen extends StatefulWidget {
   final int orderId;
@@ -81,21 +82,25 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen> with Widget
         if (order.paymentStatus == 'failed') {
           _pollTimer?.cancel();
           if (mounted) {
-            Navigator.pushReplacement(
-              context,
+            final shouldRetry = await Navigator.of(context, rootNavigator: true).push<bool>(
               MaterialPageRoute(
                 builder: (_) => PaymentResultScreen(
                   isSuccess: false,
                   title: 'Payment failed',
                   message: 'Your payment could not be completed. Please ensure you have sufficient funds and try again.',
-                  onRetry: () {
-                    // Perform a real retry by re-initiating the payment
-                    _performRealRetry();
-                  },
-                  onGoHome: () => Navigator.of(context).popUntil((route) => route.isFirst),
+                  onRetry: () => Navigator.pop(context, true),
+                  onGoHome: () => Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const CustomerShell()),
+                    (route) => false,
+                  ),
                 ),
               ),
             );
+
+            if (shouldRetry == true && mounted) {
+              _performRealRetry();
+              // Restart polling is handled by _performRealRetry which triggers navigation back to here
+            }
           }
           return;
         }
@@ -211,7 +216,10 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen> with Widget
             ),
             const SizedBox(height: 12),
             TextButton(
-              onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+              onPressed: () => Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const CustomerShell()),
+                (route) => false,
+              ),
               child: const Text('Back to Home', style: TextStyle(color: Colors.grey)),
             ),
           ],

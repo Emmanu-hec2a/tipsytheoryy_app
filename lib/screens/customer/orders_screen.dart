@@ -251,14 +251,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark ? Theme.of(context).cardColor : Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         border: isDark ? Border.all(color: Colors.white10) : null,
         boxShadow: isDark ? [] : [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 20, offset: const Offset(0, 8))
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 6))
         ],
       ),
       child: Column(
@@ -266,24 +266,24 @@ class _OrdersScreenState extends State<OrdersScreen> {
           Row(
             children: [
               Container(
-                width: 50,
-                height: 50,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   color: isDark ? Colors.white.withValues(alpha: 0.05) : AppTheme.primaryColor.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.liquor_rounded, color: isDark ? Colors.white : AppTheme.primaryColor, size: 24),
+                child: Icon(Icons.liquor_rounded, color: isDark ? Colors.white : AppTheme.primaryColor, size: 20),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('#${order.orderNumber}', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: isDark ? Colors.white : AppTheme.primaryColor)),
-                    const SizedBox(height: 2),
+                    Text('#${order.orderNumber}', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: isDark ? Colors.white : AppTheme.primaryColor)),
+                    const SizedBox(height: 1),
                     Text(
                       order.addressString ?? 'Delivery Order',
-                      style: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 11, fontWeight: FontWeight.bold),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -294,14 +294,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   _buildStatusBadge(order.status),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   _buildPaymentBadge(order.paymentStatus, order.paymentMethod),
                 ],
               ),
             ],
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: const EdgeInsets.symmetric(vertical: 12),
             child: Divider(height: 1, color: isDark ? Colors.white10 : Colors.grey.shade100),
           ),
           Row(
@@ -312,31 +312,31 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 children: [
                   Text(
                     DateFormat('MMM dd, yyyy • hh:mm a').format(order.createdAt),
-                    style: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 11, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Row(
                     children: [
-                      Icon(Icons.shopping_bag_outlined, size: 14, color: isDark ? Colors.white24 : Colors.grey.shade400),
+                      Icon(Icons.shopping_bag_outlined, size: 12, color: isDark ? Colors.white24 : Colors.grey.shade400),
                       const SizedBox(width: 4),
-                      Text('${order.itemCount} items', style: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.bold)),
+                      Text('${order.itemCount} items', style: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 11, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ],
               ),
               Text(
                 'KSh ${order.total.toStringAsFixed(0)}',
-                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: isDark ? Colors.white : AppTheme.primaryColor)
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: isDark ? Colors.white : AppTheme.primaryColor)
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           Row(
             children: [
               if (isPaymentPending)
                 Expanded(
                   child: SizedBox(
-                    height: 48,
+                    height: 42,
                     child: ElevatedButton(
                       onPressed: () => _retryPayment(order),
                       style: ElevatedButton.styleFrom(
@@ -344,14 +344,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         elevation: 0,
                       ),
-                      child: const Text('RETRY PAYMENT', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1, color: Colors.white)),
+                      child: const Text('RETRY PAYMENT', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 0.5, color: Colors.white)),
                     ),
                   ),
                 )
               else if (['pending', 'confirmed', 'assigned', 'picked_up', 'arrived'].contains(order.status.toLowerCase()))
                 Expanded(
                   child: SizedBox(
-                    height: 48,
+                    height: 42,
                     child: ElevatedButton(
                       onPressed: () {
                         Navigator.pushNamed(context, '/order-tracking', arguments: order.id);
@@ -361,14 +361,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         elevation: 0,
                       ),
-                      child: const Text('TRACK ORDER', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1)),
+                      child: const Text('TRACK ORDER', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 0.5)),
                     ),
                   ),
                 )
               else
                 Expanded(
                   child: SizedBox(
-                    height: 48,
+                    height: 42,
                     child: ElevatedButton(
                       onPressed: () => _reorder(order),
                       style: ElevatedButton.styleFrom(
@@ -376,21 +376,21 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         elevation: 0,
                       ),
-                      child: const Text('REORDER', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1)),
+                      child: const Text('REORDER', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 0.5)),
                     ),
                   ),
                 ),
               if (order.status.toLowerCase() == 'delivered') ...[
                 const SizedBox(width: 12),
                 SizedBox(
-                  height: 48,
+                  height: 42,
                   child: OutlinedButton(
                     onPressed: () => Navigator.pushNamed(context, '/rate-order', arguments: order.id),
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Icon(Icons.star_outline_rounded, color: AppTheme.primaryColor),
+                    child: const Icon(Icons.star_outline_rounded, color: AppTheme.primaryColor, size: 20),
                   ),
                 ),
               ],
@@ -425,7 +425,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
         id: it.productId,
         name: it.productName,
         price: it.priceAtOrder,
-        storeId: 0, // Not critical for reorder as we overwrite store context
+        image: it.productImage,
+        storeId: it.storeId,
       ),
       quantity: it.quantity,
     )).toList();

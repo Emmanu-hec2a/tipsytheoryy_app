@@ -45,30 +45,66 @@ class StoreCard extends StatelessWidget {
         child: Row(
           children: [
             // Store Logo
-            Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                color: isDark ? Colors.white.withValues(alpha: 0.05) : AppTheme.primaryColor.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: store.logo != null
-                  ? CachedNetworkImage(
-                      imageUrl: store.logo!,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Shimmer.fromColors(
-                        baseColor: isDark ? Colors.white10 : Colors.grey.shade100,
-                        highlightColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
-                        child: Container(color: Colors.white),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withValues(alpha: 0.05) : AppTheme.primaryColor.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: store.logo != null
+                      ? CachedNetworkImage(
+                          imageUrl: store.logo!,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Shimmer.fromColors(
+                            baseColor: isDark ? Colors.white10 : Colors.grey.shade100,
+                            highlightColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
+                            child: Container(color: Colors.white),
+                          ),
+                          errorWidget: (context, url, error) => Icon(Icons.storefront, color: isDark ? Colors.white10 : AppTheme.primaryColor.withValues(alpha: 0.3), size: 32),
+                        )
+                      : Center(
+                          child: Icon(Icons.storefront, color: isDark ? Colors.white10 : AppTheme.primaryColor.withValues(alpha: 0.3), size: 32),
+                        ),
+                  ),
+                ),
+                if (store.hasActivePromotions && store.maxPromoDiscount != null && store.isOpen)
+                  Positioned(
+                    top: -8,
+                    left: -8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFF5722), Color(0xFFFF9800)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFFF5722).withValues(alpha: 0.4),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          )
+                        ],
                       ),
-                      errorWidget: (context, url, error) => Icon(Icons.storefront, color: isDark ? Colors.white10 : AppTheme.primaryColor.withValues(alpha: 0.3), size: 32),
-                    )
-                  : Center(
-                      child: Icon(Icons.storefront, color: isDark ? Colors.white10 : AppTheme.primaryColor.withValues(alpha: 0.3), size: 32),
+                      child: Text(
+                        store.maxPromoDiscount!,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
                     ),
-              ),
+                  ),
+              ],
             ),
             const SizedBox(width: 16),
 
@@ -105,35 +141,6 @@ class StoreCard extends StatelessWidget {
                               if (store.isOpen && int.tryParse(store.deliveryTime.split(' ')[0]) != null &&
                                   int.parse(store.deliveryTime.split(' ')[0]) <= 25)
                                 const Icon(Icons.bolt_rounded, color: Colors.amber, size: 18),
-                            ],
-                            if (store.hasActivePromotions && store.maxPromoDiscount != null && store.isOpen) ...[
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [Color(0xFFFF5722), Color(0xFFFF9800)],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(6),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFFFF5722).withValues(alpha: 0.3),
-                                      blurRadius: 4,
-                                      offset: const Offset(0, 2),
-                                    )
-                                  ],
-                                ),
-                                child: Text(
-                                  store.maxPromoDiscount!,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ),
                             ],
                           ],
                         ),

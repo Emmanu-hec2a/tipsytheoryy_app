@@ -9,6 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import '../../core/theme.dart';
 import '../../providers/rider_provider.dart';
 import '../../models/order_model.dart';
+import '../customer/chat_screen.dart';
 import 'delivery_complete_screen.dart';
 
 class ActiveDeliveryScreen extends StatefulWidget {
@@ -389,13 +390,56 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
                       ),
                     ),
                   if (order.customerPhone != null)
-                    GestureDetector(
-                      onTap: () => launchUrl(Uri.parse('tel:${order.customerPhone}')),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(color: AppTheme.accentColor.withValues(alpha: 0.1), shape: BoxShape.circle),
-                        child: const Icon(Icons.phone_in_talk_rounded, color: AppTheme.accentColor),
-                      ),
+                    Row(
+                      children: [
+                        Stack(
+                          children: [
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ChatScreen(
+                                      orderId: order.id,
+                                      orderNumber: order.orderNumber,
+                                      recipientName: order.customerName ?? 'Customer',
+                                      recipientImage: order.customerImage,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(color: AppTheme.primaryColor.withValues(alpha: 0.1), shape: BoxShape.circle),
+                                child: const Icon(Icons.chat_bubble_rounded, color: AppTheme.primaryColor),
+                              ),
+                            ),
+                            if (order.hasUnreadMessages)
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: Container(
+                                  width: 12,
+                                  height: 12,
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white, width: 2),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(width: 12),
+                        GestureDetector(
+                          onTap: () => launchUrl(Uri.parse('tel:${order.customerPhone}')),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(color: AppTheme.accentColor.withValues(alpha: 0.1), shape: BoxShape.circle),
+                            child: const Icon(Icons.phone_in_talk_rounded, color: AppTheme.accentColor),
+                          ),
+                        ),
+                      ],
                     ),
                 ],
               ),

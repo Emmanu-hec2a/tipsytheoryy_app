@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../core/api_client.dart';
+import '../services/notification_service.dart';
 
 enum AuthStatus { unauthenticated, authenticating, authenticated, failed }
 
@@ -213,6 +214,10 @@ class AuthProvider with ChangeNotifier {
     
     _role = data['role'];
     _status = AuthStatus.authenticated;
+    
+    // Register FCM token after successful authentication
+    NotificationService().registerToken();
+
     notifyListeners();
   }
 
@@ -234,6 +239,9 @@ class AuthProvider with ChangeNotifier {
     if (token != null && role != null) {
       _role = role;
       _status = AuthStatus.authenticated;
+      
+      // Ensure FCM token is registered on startup if authenticated
+      NotificationService().registerToken();
     } else {
       _role = null;
       _status = AuthStatus.unauthenticated;

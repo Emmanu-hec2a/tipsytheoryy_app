@@ -174,8 +174,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         
         // ✨ SMOOTH TRANSITION: Navigate first, THEN clear cart
         if (mounted) {
-          Navigator.pushReplacement(
-            context,
+          Navigator.of(context, rootNavigator: true).pushReplacement(
             MaterialPageRoute(
               builder: (_) => PaymentPendingScreen(
                 orderId: orderId,
@@ -247,11 +246,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      _capturedAddress ?? 'Locating you...',
+                      _capturedAddress ?? (_isLoading ? 'Capturing your location...' : 'Locating you...'),
                       style: TextStyle(color: _capturedAddress == null ? (isDark ? Colors.white24 : Colors.grey) : (isDark ? Colors.white70 : Colors.black87)),
                     ),
                   ),
-                  IconButton(onPressed: _captureLocation, icon: Icon(Icons.refresh, size: 20, color: isDark ? Colors.white38 : Colors.grey)),
+                  _isLoading 
+                    ? const Padding(
+                        padding: EdgeInsets.all(12.0),
+                        child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.accentColor)),
+                      )
+                    : IconButton(onPressed: _captureLocation, icon: Icon(Icons.refresh, size: 20, color: isDark ? Colors.white38 : Colors.grey)),
                 ],
               ),
             ),

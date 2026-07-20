@@ -5,7 +5,9 @@ class OrderModel {
   final String orderNumber;
   final String? customerName;
   final String? customerPhone;
+  final String? customerImage;
   final String? riderName;
+  final String? riderImage;
   final String status;
   final String paymentStatus;
   final String paymentMethod;
@@ -27,6 +29,7 @@ class OrderModel {
   final double? storeLongitude;
   final bool requiresRiderVerification;
   final DateTime? riderVerifiedAt;
+  final bool hasUnreadMessages;
   final List<OrderItemModel> items;
 
   OrderModel({
@@ -34,7 +37,9 @@ class OrderModel {
     required this.orderNumber,
     this.customerName,
     this.customerPhone,
+    this.customerImage,
     this.riderName,
+    this.riderImage,
     required this.status,
     required this.paymentStatus,
     this.paymentMethod = 'mpesa',
@@ -54,6 +59,7 @@ class OrderModel {
     this.storeLongitude,
     this.requiresRiderVerification = false,
     this.riderVerifiedAt,
+    this.hasUnreadMessages = false,
     this.items = const [],
   });
 
@@ -64,7 +70,9 @@ class OrderModel {
       orderNumber: json['order_number'] ?? '',
       customerName: json['customer_name'],
       customerPhone: json['customer_phone'],
+      customerImage: json['customer_image'],
       riderName: json['rider_name'],
+      riderImage: json['rider_image'],
       status: json['status'] ?? 'pending',
       paymentStatus: json['payment_status'] ?? 'pending',
       paymentMethod: json['payment_method']?.toString() ?? 'mpesa',
@@ -84,6 +92,7 @@ class OrderModel {
       storeLongitude: double.tryParse(json['store_longitude']?.toString() ?? ''),
       requiresRiderVerification: json['requires_rider_verification'] ?? false,
       riderVerifiedAt: json['rider_verified_at'] != null ? DateTime.parse(json['rider_verified_at']) : null,
+      hasUnreadMessages: json['has_unread_messages'] ?? false,
       items: itemsList.map((i) => OrderItemModel.fromJson(i)).toList(),
     );
   }
@@ -120,24 +129,30 @@ class OrderModel {
 
 class OrderItemModel {
   final int id;
-  final String productName; // Backend provides this as 'product_name'
+  final String productName;
+  final String? productImage;
   final int quantity;
   final double priceAtOrder;
-  final int productId; // Backend field is 'food_item'
+  final int productId;
+  final int storeId;
 
   OrderItemModel({
     required this.id,
     required this.productName,
+    this.productImage,
     required this.quantity,
     required this.priceAtOrder,
     required this.productId,
+    this.storeId = 0,
   });
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
     return OrderItemModel(
       id: json['id'],
       productName: json['product_name'] ?? 'Unknown Item',
+      productImage: json['product_image'],
       productId: json['food_item'] ?? 0,
+      storeId: json['store_id'] ?? 0,
       quantity: json['quantity'] ?? 1,
       priceAtOrder: double.tryParse(json['price_at_order']?.toString() ?? '0') ?? 0.0,
     );
@@ -147,7 +162,9 @@ class OrderItemModel {
     return {
       'id': id,
       'product_name': productName,
+      'product_image': productImage,
       'food_item': productId,
+      'store_id': storeId,
       'quantity': quantity,
       'price_at_order': priceAtOrder,
     };

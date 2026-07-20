@@ -298,51 +298,63 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           maxChildSize: 0.9,
           expand: false,
           builder: (context, scrollController) {
-            return Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Delivery Address', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: isDark ? Colors.white : AppTheme.primaryColor)),
-                  const SizedBox(height: 20),
-                  ListTile(
-                    onTap: () async {
-                      await locProvider.captureCurrentLocation();
-                      if (context.mounted) {
-                        Navigator.pop(context);
-                        _loadInitialData();
-                      }
-                    },
-                    leading: const Icon(Icons.my_location, color: AppTheme.accentColor),
-                    title: Text('Use Current Location', style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
-                    subtitle: Text('Locate me using GPS', style: TextStyle(color: isDark ? Colors.white38 : Colors.grey)),
-                  ),
-                  const Divider(),
-                  Expanded(
-                    child: locProvider.savedAddresses.isEmpty
-                        ? Center(child: Text('No saved addresses yet', style: TextStyle(color: isDark ? Colors.white38 : Colors.grey)))
-                        : ListView.builder(
-                            controller: scrollController,
-                            itemCount: locProvider.savedAddresses.length,
-                            itemBuilder: (context, index) {
-                              final addr = locProvider.savedAddresses[index];
-                              return ListTile(
-                                onTap: () {
-                                  locProvider.setCurrentAddress(addr);
-                                  Navigator.pop(context);
-                                  _loadInitialData();
+            return Consumer<LocationProvider>(
+              builder: (context, loc, child) {
+                return Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Delivery Address', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: isDark ? Colors.white : AppTheme.primaryColor)),
+                      const SizedBox(height: 20),
+                      ListTile(
+                        onTap: loc.isLoading ? null : () async {
+                          await loc.captureCurrentLocation();
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                            _loadInitialData();
+                          }
+                        },
+                        leading: loc.isLoading 
+                          ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.accentColor))
+                          : const Icon(Icons.my_location, color: AppTheme.accentColor),
+                        title: Text(
+                          loc.isLoading ? 'Capturing Location...' : 'Use Current Location', 
+                          style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)
+                        ),
+                        subtitle: Text(
+                          loc.isLoading ? 'Wait a moment...' : 'Locate me using GPS', 
+                          style: TextStyle(color: isDark ? Colors.white38 : Colors.grey)
+                        ),
+                      ),
+                      const Divider(),
+                      Expanded(
+                        child: loc.savedAddresses.isEmpty
+                            ? Center(child: Text('No saved addresses yet', style: TextStyle(color: isDark ? Colors.white38 : Colors.grey)))
+                            : ListView.builder(
+                                controller: scrollController,
+                                itemCount: loc.savedAddresses.length,
+                                itemBuilder: (context, index) {
+                                  final addr = loc.savedAddresses[index];
+                                  return ListTile(
+                                    onTap: () {
+                                      loc.setCurrentAddress(addr);
+                                      Navigator.pop(context);
+                                      _loadInitialData();
+                                    },
+                                    leading: const Icon(Icons.location_on_outlined, color: AppTheme.primaryColor),
+                                    title: Text(addr.name, style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
+                                    subtitle: Text(addr.addressString, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: isDark ? Colors.white38 : Colors.grey)),
+                                    trailing: addr.id == loc.currentAddress?.id ? const Icon(Icons.check_circle, color: Colors.green) : null,
+                                  );
                                 },
-                                leading: const Icon(Icons.location_on_outlined, color: AppTheme.primaryColor),
-                                title: Text(addr.name, style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
-                                subtitle: Text(addr.addressString, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: isDark ? Colors.white38 : Colors.grey)),
-                                trailing: addr.id == locProvider.currentAddress?.id ? const Icon(Icons.check_circle, color: Colors.green) : null,
-                              );
-                            },
-                          ),
+                              ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                );
+              },
             );
           },
         );

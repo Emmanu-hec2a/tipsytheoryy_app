@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
+import 'customer_shell.dart';
 
 class PaymentResultScreen extends StatelessWidget {
   final bool isSuccess;
@@ -67,9 +68,10 @@ class PaymentResultScreen extends StatelessWidget {
                     onPressed: onRetry,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.accentColor,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 0,
                     ),
-                    child: const Text('TRY AGAIN', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
+                    child: const Text('Try again', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 16)),
                   ),
                 ),
               const SizedBox(height: 12),
@@ -77,12 +79,15 @@ class PaymentResultScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 56,
                 child: OutlinedButton(
-                  onPressed: onGoHome ?? () => Navigator.of(context).popUntil((route) => route.isFirst),
+                  onPressed: onGoHome ?? () => Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const CustomerShell()),
+                    (route) => false,
+                  ),
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(color: isDark ? Colors.white24 : Colors.grey.shade300),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
-                  child: Text('BACK TO HOME', style: TextStyle(fontWeight: FontWeight.w900, color: isDark ? Colors.white70 : Colors.grey.shade700)),
+                  child: Text('Back to home', style: TextStyle(fontWeight: FontWeight.w900, color: isDark ? Colors.white : Colors.grey.shade700, fontSize: 16)),
                 ),
               ),
             ],

@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../../core/api_client.dart';
 import '../../core/theme.dart';
 import '../../models/order_model.dart';
+import 'chat_screen.dart';
 
 class OrderTrackingScreen extends StatefulWidget {
   final int orderId;
@@ -588,9 +589,58 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(order.orderNumber, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: isDark ? Colors.white : Colors.black87)),
-          const SizedBox(height: 6),
-          Text('Payment: ${_formatPaymentStatus(order.paymentStatus)}', style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.black87)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(order.orderNumber, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: isDark ? Colors.white : Colors.black87)),
+                  const SizedBox(height: 6),
+                  Text('Payment: ${_formatPaymentStatus(order.paymentStatus)}', style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.black87)),
+                ],
+              ),
+              if (order.status != 'delivered' && order.status != 'cancelled')
+                Stack(
+                  children: [
+                    IconButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ChatScreen(
+                              orderId: order.id,
+                              orderNumber: order.orderNumber,
+                              recipientName: order.riderName ?? 'Rider',
+                              recipientImage: order.riderImage,
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.chat_bubble_rounded, color: AppTheme.accentColor, size: 28),
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppTheme.accentColor.withValues(alpha: 0.1),
+                        padding: const EdgeInsets.all(12),
+                      ),
+                    ),
+                    if (order.hasUnreadMessages)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+            ],
+          ),
           const SizedBox(height: 6),
           Text('Status: ${_formatStatus(order.status)}', style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.black87)),
           const SizedBox(height: 6),
