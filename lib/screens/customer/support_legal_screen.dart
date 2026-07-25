@@ -26,7 +26,7 @@ class SupportLegalScreen extends StatelessWidget {
             _buildSection(context, 'GET IN TOUCH', [
               _buildLegalItem(context, Icons.chat_bubble_outline_rounded, 'WhatsApp Support', 'Instant help via WhatsApp', () => _launchWhatsApp()),
               _buildLegalItem(context, Icons.headset_mic_outlined, 'Help Center', 'Speak with our support team', () => _launchPhone()),
-              _buildLegalItem(context, Icons.mail_outline_rounded, 'Email Support', 'petniqueke@gmail.com', () => _launchEmail()),
+              _buildLegalItem(context, Icons.mail_outline_rounded, 'Email Support', 'support@s.tipsytheoryy.com', () => _launchEmail()),
               _buildLegalItem(context, Icons.phone_outlined, 'Call Us', '+254 718 2588 21', () => _launchPhone()),
             ]),
             _buildSection(context, 'LEGAL & POLICIES', [
@@ -103,7 +103,7 @@ class SupportLegalScreen extends StatelessWidget {
   }
 
   void _launchEmail() async {
-    final Uri emailLaunchUri = Uri(scheme: 'mailto', path: 'petniqueke@gmail.com');
+    final Uri emailLaunchUri = Uri(scheme: 'mailto', path: 'support@s.tipsytheoryy.com');
     if (await canLaunchUrl(emailLaunchUri)) {
       await launchUrl(emailLaunchUri, mode: LaunchMode.externalApplication);
     }

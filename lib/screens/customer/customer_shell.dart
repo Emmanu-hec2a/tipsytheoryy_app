@@ -17,7 +17,7 @@ class CustomerShell extends StatefulWidget {
   State<CustomerShell> createState() => _CustomerShellState();
 }
 
-class _CustomerShellState extends State<CustomerShell> {
+class _CustomerShellState extends State<CustomerShell> with WidgetsBindingObserver {
   int _selectedIndex = 0;
   
   // Walk-and-Watch state
@@ -32,38 +32,47 @@ class _CustomerShellState extends State<CustomerShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initSafetyDetection();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _userAccelerometerSubscription?.cancel();
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 🔋 Battery Optimization: Stop sensors if app is in background
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      _userAccelerometerSubscription?.pause();
+      debugPrint("🔋 Battery Guard: Paused motion sensors");
+    } else if (state == AppLifecycleState.resumed) {
+      _userAccelerometerSubscription?.resume();
+      debugPrint("🔋 Battery Guard: Resumed motion sensors");
+    }
+  }
+
   void _initSafetyDetection() {
-    // 🛡️ Use UserAccelerometer (automatically removes gravity)
-    // Sampling at 500ms intervals to reduce CPU jitter
     _userAccelerometerSubscription = userAccelerometerEventStream(
       samplingPeriod: const Duration(milliseconds: 500)
     ).listen((event) {
       if (!mounted) return;
 
-      // Calculate pure linear acceleration magnitude
       double magnitude = sqrt(event.x * event.x + event.y * event.y + event.z * event.z);
 
-      // Check if motion is significant (ignoring minor hand jitter)
       if (magnitude > _walkingThreshold) {
         _sustainedMotionCount++;
       } else {
-        _sustainedMotionCount = 0; // Reset if they stop moving
+        _sustainedMotionCount = 0;
       }
 
-      // Trigger ONLY if motion is sustained (prevents accidental shakes/sitting movements)
       if (_sustainedMotionCount >= _requiredSustainedEvents && 
-          DateTime.now().difference(_lastSafetyNotice).inSeconds > 90) { // CD: 90s
+          DateTime.now().difference(_lastSafetyNotice).inSeconds > 90) {
         _showSafetyNotice();
-        _sustainedMotionCount = 0; // Reset after warning
+        _sustainedMotionCount = 0;
       }
     });
   }
@@ -71,10 +80,12 @@ class _CustomerShellState extends State<CustomerShell> {
   void _showSafetyNotice() {
     _lastSafetyNotice = DateTime.now();
     
-    // 🛡️ UI Hardening: Using a custom Overlay instead of a blocking Dialog
-    // This ensures it doesn't interrupt shopping but stays visible.
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     scaffoldMessenger.hideCurrentSnackBar();
+    
+    // 🛡️ UI HARDENING: Adjusted margin to account for Status Bar / SafeArea
+    final topPadding = MediaQuery.of(context).padding.top;
+    
     scaffoldMessenger.showSnackBar(
       SnackBar(
         content: Container(
@@ -109,9 +120,14 @@ class _CustomerShellState extends State<CustomerShell> {
             ],
           ),
         ),
-        backgroundColor: AppTheme.accentColor, // Consistent with Premium UI
+        backgroundColor: AppTheme.accentColor,
         behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.fromLTRB(16, 16, 16, 100), // Pushed up above NavBar
+        // 📍 DYNAMIC POSITIONING: Calculated based on screen height and status bar
+        margin: EdgeInsets.only(
+          bottom: MediaQuery.of(context).size.height - (topPadding + 140), 
+          left: 16, 
+          right: 16
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         duration: const Duration(seconds: 5),
         dismissDirection: DismissDirection.horizontal,
@@ -129,7 +145,7 @@ class _CustomerShellState extends State<CustomerShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBody: true, // Crucial for floating navbar to show screen content behind it
+      extendBody: true,
       body: _screens[_selectedIndex],
       floatingActionButton: const TheoryAIFab(),
       bottomNavigationBar: FloatingPillNavBar(

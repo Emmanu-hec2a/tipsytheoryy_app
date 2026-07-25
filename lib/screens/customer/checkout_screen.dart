@@ -129,7 +129,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         'mpesa_phone': _selectedPaymentMethod == 'mpesa' ? _mpesaPhoneController.text.trim() : null,
         'use_wallet': _useWallet,
         'promo_code': cart.appliedPromoCode,
-        'total': cart.total, // Pass total for risk calculation
+        // 🚨 REMOVED: 'total': cart.total, - Backend should calculate its own source of truth
       });
 
       if (orderResponse.statusCode == 403 && orderResponse.data['error'] == 'age_verification_required') {

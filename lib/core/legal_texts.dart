@@ -7,7 +7,7 @@ TipsyTheoryy ("we", "us", "our") is committed to protecting your personal inform
 
 1. WHO WE ARE
 TipsyTheoryy is an on-demand liquor delivery platform operated by Emmanuel Odongo (sole trader), registered and operating in Kenya. We connect customers with licensed liquor merchants and independent delivery riders across Kenya.
-Contact: legal@tipsytheoryy.com
+Contact: support@s.tipsytheoryy.com
 
 2. INFORMATION WE COLLECT
 2.1 Information you provide directly
@@ -90,7 +90,7 @@ Under the Kenya Data Protection Act, 2019, you have the following rights:
 - Right to data portability — request your data in a portable format
 - Right to withdraw consent — where processing is based on consent, you may withdraw it at any time
 
-To exercise any of these rights, contact us at legal@tipsytheoryy.com. We will respond within 30 days.
+To exercise any of these rights, contact us at support@s.tipsytheoryy.com. We will respond within 30 days.
 
 9. SECURITY
 We implement industry-standard security measures including encrypted data transmission (HTTPS/TLS), encrypted storage of sensitive credentials, access controls, and regular security reviews. No system is perfectly secure — if you suspect unauthorised access to your account, contact us immediately.
@@ -102,7 +102,7 @@ Important: TipsyTheoryy is strictly for users aged 18 and over. We do not knowin
 We may update this Privacy Policy from time to time. We will notify you of material changes via the app or email at least 14 days before they take effect. Continued use of TipsyTheoryy after changes take effect constitutes your acceptance of the updated policy.
 
 12. CONTACT
-For privacy-related questions, data requests, or complaints, contact us at: legal@tipsytheoryy.com
+For privacy-related questions, data requests, or complaints, contact us at: support@s.tipsytheoryy.com
 If you are not satisfied with our response, you have the right to lodge a complaint with the Office of the Data Protection Commissioner of Kenya.
 """;
 
@@ -128,7 +128,7 @@ Important: The sale of alcohol to persons under 18 is illegal in Kenya under the
 - You must provide accurate, complete, and current information when creating your account
 - You are responsible for maintaining the confidentiality of your login credentials
 - You are responsible for all activity that occurs under your account
-- You must notify us immediately at support@tipsytheoryy.com if you suspect unauthorised access to your account
+- You must notify us immediately at support@s.tipsytheoryy.com if you suspect unauthorised access to your account
 - We reserve the right to suspend or terminate accounts that violate these Terms or are used fraudulently
 
 4. PLACING ORDERS
@@ -146,7 +146,7 @@ Important: The sale of alcohol to persons under 18 is illegal in Kenya under the
 - Payments go directly to the merchant's M-PESA account — TipsyTheoryy does not hold or process your funds
 - Your M-PESA PIN is never shared with or visible to TipsyTheoryy
 - Payment must be completed before your order is processed. Unpaid orders will be automatically cancelled
-- In the event of a duplicate charge, contact us immediately at support@tipsytheoryy.com with your transaction reference
+- In the event of a duplicate charge, contact us immediately at support@s.tipsytheoryy.com with your transaction reference
 
 6. DELIVERY
 - Delivery is performed by independent riders assigned to the merchant fulfilling your order
@@ -158,7 +158,7 @@ Important: The sale of alcohol to persons under 18 is illegal in Kenya under the
 
 7. REFUNDS & CANCELLATIONS
 - Orders may be cancelled before a rider is assigned. Once a rider has been assigned, cancellation is not possible
-- If you receive incorrect, missing, or damaged products, you may request a partial refund by contacting support@tipsytheoryy.com within 24 hours of delivery with photographic evidence
+- If you receive incorrect, missing, or damaged products, you may request a partial refund by contacting support@s.tipsytheoryy.com within 24 hours of delivery with photographic evidence
 - Approved refunds are partial — the delivery fee is non-refundable in all cases
 - Refunds are processed to your original payment method (M-PESA) within 3–7 business days
 - Refunds will not be issued for: orders refused due to failed age verification, incorrect delivery addresses provided by the customer, or customer unavailability at delivery time
@@ -190,14 +190,14 @@ To the maximum extent permitted by Kenyan law:
 - We are not liable for any indirect, consequential, or punitive damages
 
 12. GOVERNING LAW & DISPUTES
-These Terms are governed by the Laws of Kenya. Any dispute arising from these Terms or your use of TipsyTheoryy shall be subject to the exclusive jurisdiction of the courts of Kenya. We encourage you to contact us first at support@tipsytheoryy.com — most issues can be resolved quickly without formal proceedings.
+These Terms are governed by the Laws of Kenya. Any dispute arising from these Terms or your use of TipsyTheoryy shall be subject to the exclusive jurisdiction of the courts of Kenya. We encourage you to contact us first at support@s.tipsytheoryy.com — most issues can be resolved quickly without formal proceedings.
 
 13. CHANGES TO TERMS
 We may update these Terms from time to time. We will notify you of material changes via the app at least 14 days before they take effect. Continued use of TipsyTheoryy constitutes acceptance of the updated Terms.
 
 14. CONTACT
-Customer support: support@tipsytheoryy.com
-Legal matters: legal@tipsytheoryy.com
+Customer support: support@s.tipsytheoryy.com
+Legal matters: support@s.tipsytheoryy.com
 Website: tipsytheoryy.com
 """;
 
@@ -297,11 +297,11 @@ TipsyTheoryy's liability to you is limited to:
 - Our maximum liability to you for any claim shall not exceed the subscription fees you paid in the 3 months preceding the claim
 
 13. GOVERNING LAW
-These Merchant Terms are governed by the Laws of Kenya. Disputes shall be subject to the exclusive jurisdiction of the courts of Kenya. We encourage direct resolution via legal@tipsytheoryy.com before formal proceedings.
+These Merchant Terms are governed by the Laws of Kenya. Disputes shall be subject to the exclusive jurisdiction of the courts of Kenya. We encourage direct resolution via support@s.tipsytheoryy.com before formal proceedings.
 
 14. CONTACT
-Merchant support: support@tipsytheoryy.com
-Legal & billing: legal@tipsytheoryy.com
+Merchant support: support@s.tipsytheoryy.com
+Legal & billing: support@s.tipsytheoryy.com
 """;
 
   static const String riderAgreement = """
@@ -366,7 +366,7 @@ You agree to:
 - Not consume alcohol while on duty or while making deliveries
 - Not use your phone for calls or messaging while driving or riding
 - Comply with all applicable Kenyan road traffic laws, including licensing requirements for your vehicle
-- Report any incidents, accidents, or complaints to TipsyTheoryy at support@tipsytheoryy.com within 24 hours
+- Report any incidents, accidents, or complaints to TipsyTheoryy at support@s.tipsytheoryy.com within 24 hours
 
 8. EQUIPMENT & VEHICLE
 - You are responsible for providing your own delivery vehicle (motorcycle, bicycle, or other suitable transport)
@@ -388,7 +388,7 @@ TipsyTheoryy may suspend or terminate your rider account immediately if:
 - You receive a pattern of serious customer complaints
 - You fail to comply with any provision of this Agreement
 - You are found to be under the influence of alcohol or drugs while on duty
-You may terminate this Agreement at any time by notifying TipsyTheoryy via support@tipsytheoryy.com and deactivating your account.
+You may terminate this Agreement at any time by notifying TipsyTheoryy via support@s.tipsytheoryy.com and deactivating your account.
 
 11. LIMITATION OF LIABILITY
 TipsyTheoryy is not liable for:
@@ -399,11 +399,11 @@ TipsyTheoryy is not liable for:
 You agree to indemnify TipsyTheoryy against any claims, losses, or liabilities arising from your conduct in performing delivery services.
 
 12. GOVERNING LAW
-This Agreement is governed by the Laws of Kenya. Any disputes shall be subject to the jurisdiction of the courts of Kenya. Contact legal@tipsytheoryy.com to resolve disputes informally before pursuing formal proceedings.
+This Agreement is governed by the Laws of Kenya. Any disputes shall be subject to the jurisdiction of the courts of Kenya. Contact support@s.tipsytheoryy.com to resolve disputes informally before pursuing formal proceedings.
 
 13. CONTACT
-Rider support: support@tipsytheoryy.com
-Incident reporting: support@tipsytheoryy.com
+Rider support: support@s.tipsytheoryy.com
+Incident reporting: support@s.tipsytheoryy.com
 """;
 
   static const String aboutUs = """
@@ -449,8 +449,8 @@ We are currently operating Kenya-wide, with plans to expand across East Africa a
 
 Contact Us
 Website: tipsytheoryy.com
-Customer Support: support@tipsytheoryy.com
-Legal & Partnerships: legal@tipsytheoryy.com
+Customer Support: support@s.tipsytheoryy.com
+Legal & Partnerships: support@s.tipsytheoryy.com
 
 Sip. Savour. Celebrate.
 """;
