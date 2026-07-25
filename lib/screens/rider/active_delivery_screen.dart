@@ -404,6 +404,7 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
                                       orderNumber: order.orderNumber,
                                       recipientName: order.customerName ?? 'Customer',
                                       recipientImage: order.customerImage,
+                                      recipientRole: 'Customer',
                                     ),
                                   ),
                                 );

@@ -65,10 +65,10 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen> with Widget
     setState(() => _isChecking = true);
 
     try {
-      final response = await _apiClient.get('customer/orders/${widget.orderId}/');
+      final response = await _apiClient.get('customer/orders/${widget.orderId}/payment-status/');
       if (response.statusCode == 200) {
-        final order = OrderModel.fromJson(response.data);
-        if (order.paymentStatus == 'paid') {
+        final paymentStatus = response.data['payment_status'];
+        if (paymentStatus == 'paid') {
           _pollTimer?.cancel();
           if (mounted) {
             Navigator.pushReplacement(
@@ -79,7 +79,7 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen> with Widget
           return;
         }
 
-        if (order.paymentStatus == 'failed') {
+        if (paymentStatus == 'failed') {
           _pollTimer?.cancel();
           if (mounted) {
             final shouldRetry = await Navigator.of(context, rootNavigator: true).push<bool>(
@@ -98,8 +98,7 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen> with Widget
             );
 
             if (shouldRetry == true && mounted) {
-              _performRealRetry();
-              // Restart polling is handled by _performRealRetry which triggers navigation back to here
+              _showRetryDialog();
             }
           }
           return;
@@ -118,12 +117,49 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen> with Widget
     }
   }
 
-  Future<void> _performRealRetry() async {
+  void _showRetryDialog() {
+    final TextEditingController phoneController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Retry Payment'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Verify your M-Pesa phone number to retry.'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: phoneController,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(
+                labelText: 'M-Pesa Phone Number',
+                hintText: 'e.g. 0712345678',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              final phone = phoneController.text.trim();
+              Navigator.pop(context);
+              _performRealRetry(phone: phone.isNotEmpty ? phone : null);
+            },
+            child: const Text('Send STK Push'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _performRealRetry({String? phone}) async {
     setState(() => _isChecking = true);
     try {
       final response = await _apiClient.post('customer/orders/retry-payment/', data: {
         'order_number': widget.orderNumber,
-        // We could also pass a phone here if we wanted to let them change it on retry
+        if (phone != null) 'mpesa_phone': phone,
       });
 
       if (response.statusCode == 200) {
@@ -146,8 +182,38 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen> with Widget
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Retry failed: $e')));
-        // Take them home if even retry fails
-        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    } finally {
+      if (mounted) setState(() => _isChecking = false);
+    }
+  }
+
+  Future<void> _triggerManualStatusQuery() async {
+    setState(() => _isChecking = true);
+    try {
+      final response = await _apiClient.post('customer/orders/${widget.orderId}/mpesa-query/');
+      if (response.statusCode == 200) {
+        if (response.data['status'] == 'paid') {
+          _pollTimer?.cancel();
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => OrderTrackingScreen(orderId: widget.orderId)),
+            );
+          }
+          return;
+        }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(response.data['message'] ?? 'Status updated.'))
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not reach Safaricom. Please wait a moment.'))
+        );
       }
     } finally {
       if (mounted) setState(() => _isChecking = false);
@@ -206,12 +272,25 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen> with Widget
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: _isChecking ? null : _checkPaymentStatus,
+                onPressed: _isChecking ? null : _triggerManualStatusQuery,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
+                  backgroundColor: AppTheme.accentColor,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text('I HAVE PAID', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                child: const Text('STUCK? CHECK STATUS', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: OutlinedButton(
+                onPressed: _isChecking ? null : _checkPaymentStatus,
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppTheme.primaryColor),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('REFRESH', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
               ),
             ),
             const SizedBox(height: 12),

@@ -66,6 +66,17 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.692162740094-jvhs5ntseb3eq662l28524qr6v7jm7p8</string>
+			</array>
+		</dict>
+	</array>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>We need your location to show your delivery address and track your order live on the map.</string>
     <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>

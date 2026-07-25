@@ -1,4 +1,5 @@
 import 'product_model.dart';
+import '../core/api_client.dart';
 
 class OrderModel {
   final int id;
@@ -8,6 +9,8 @@ class OrderModel {
   final String? customerImage;
   final String? riderName;
   final String? riderImage;
+  final String? riderPhone;
+  final double? riderRating;
   final String status;
   final String paymentStatus;
   final String paymentMethod;
@@ -40,6 +43,8 @@ class OrderModel {
     this.customerImage,
     this.riderName,
     this.riderImage,
+    this.riderPhone,
+    this.riderRating,
     required this.status,
     required this.paymentStatus,
     this.paymentMethod = 'mpesa',
@@ -65,14 +70,29 @@ class OrderModel {
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     final itemsList = (json['items'] as List?) ?? [];
+
+    String? cImage = json['customer_image'];
+    if (cImage != null && cImage.startsWith('/')) {
+      final base = ApiClient.baseUrl.replaceAll('/api/v1/', '');
+      cImage = "$base$cImage";
+    }
+
+    String? rImage = json['rider_image'];
+    if (rImage != null && rImage.startsWith('/')) {
+      final base = ApiClient.baseUrl.replaceAll('/api/v1/', '');
+      rImage = "$base$rImage";
+    }
+
     return OrderModel(
       id: json['id'],
       orderNumber: json['order_number'] ?? '',
       customerName: json['customer_name'],
       customerPhone: json['customer_phone'],
-      customerImage: json['customer_image'],
+      customerImage: cImage,
       riderName: json['rider_name'],
-      riderImage: json['rider_image'],
+      riderImage: rImage,
+      riderPhone: json['rider_phone'],
+      riderRating: double.tryParse(json['rider_rating']?.toString() ?? ''),
       status: json['status'] ?? 'pending',
       paymentStatus: json['payment_status'] ?? 'pending',
       paymentMethod: json['payment_method']?.toString() ?? 'mpesa',
@@ -85,13 +105,13 @@ class OrderModel {
       longitude: double.tryParse(json['longitude']?.toString() ?? ''),
       riderLatitude: double.tryParse(json['rider_latitude']?.toString() ?? ''),
       riderLongitude: double.tryParse(json['rider_longitude']?.toString() ?? ''),
-      createdAt: DateTime.parse(json['created_at']),
+      createdAt: DateTime.parse(json['created_at']).toLocal(),
       itemCount: itemsList.length,
       storeName: json['store_name'],
       storeLatitude: double.tryParse(json['store_latitude']?.toString() ?? ''),
       storeLongitude: double.tryParse(json['store_longitude']?.toString() ?? ''),
       requiresRiderVerification: json['requires_rider_verification'] ?? false,
-      riderVerifiedAt: json['rider_verified_at'] != null ? DateTime.parse(json['rider_verified_at']) : null,
+      riderVerifiedAt: json['rider_verified_at'] != null ? DateTime.parse(json['rider_verified_at']).toLocal() : null,
       hasUnreadMessages: json['has_unread_messages'] ?? false,
       items: itemsList.map((i) => OrderItemModel.fromJson(i)).toList(),
     );

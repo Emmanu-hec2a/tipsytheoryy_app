@@ -12,7 +12,20 @@
           "package_name": "com.tipsytheoryy.tipsytheoryy_app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "692162740094-rul7a61nn33lc1nv86ht2p15l0f6ton5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.tipsytheoryy.tipsytheoryy_app",
+            "certificate_hash": "63b4d62414d630800067e486f7f90e1068fb8ab9"
+          }
+        },
+        {
+          "client_id": "692162740094-jvhs5ntseb3eq662l28524qr6v7jm7p8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyD6Dwv6qIwlEzjqfOY-mtIG5Mld6jo6M74"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "692162740094-jvhs5ntseb3eq662l28524qr6v7jm7p8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

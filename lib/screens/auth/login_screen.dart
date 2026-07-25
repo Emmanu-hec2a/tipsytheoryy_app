@@ -6,6 +6,8 @@ import '../../providers/auth_provider.dart';
 import '../customer/customer_shell.dart';
 import '../rider/rider_shell.dart';
 import 'signup_screen.dart';
+import 'social_phone_link_screen.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -64,6 +66,17 @@ class _LoginScreenState extends State<LoginScreen> {
   void _handleSocialResult(bool success) {
     if (success && mounted) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      
+      // 🛡️ Redirect to Phone Link if required
+      // This is a common pattern for Social Auth in Phone-primary markets
+      if (authProvider.requiresPhoneSetup) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const SocialPhoneLinkScreen()),
+        );
+        return;
+      }
+
       Widget nextShell = authProvider.role == 'rider' 
         ? const RiderShell() 
         : const CustomerShell();
@@ -186,7 +199,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                       ),
                       TextButton(
-                        onPressed: () {},
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                        ),
                         child: Text('Forgot Password?', 
                           style: TextStyle(color: isDark ? AppTheme.accentColor : AppTheme.primaryColor, fontWeight: FontWeight.bold, fontSize: 13)
                         ),

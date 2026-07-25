@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme.dart';
 import '../../providers/favourite_provider.dart';
 import '../../widgets/store_card.dart';
+import 'package:shimmer/shimmer.dart';
 import 'store_detail_screen.dart';
 import 'stores_list_screen.dart';
 
@@ -39,8 +40,8 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: favProvider.isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor))
+      body: favProvider.isLoading && favProvider.favouriteStores.isEmpty
+          ? _buildSkeletons(context)
           : favProvider.favouriteStores.isEmpty
               ? _buildEmptyState()
               : RefreshIndicator(
@@ -103,6 +104,26 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
             child: const Text('DISCOVER STORES', style: TextStyle(fontWeight: FontWeight.w900)),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSkeletons(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseColor = isDark ? AppTheme.darkShimmerBase : Colors.grey.shade100;
+    final highlightColor = isDark ? AppTheme.darkShimmerHighlight : Colors.white;
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(20),
+      itemCount: 4,
+      itemBuilder: (_, __) => Shimmer.fromColors(
+        baseColor: baseColor,
+        highlightColor: highlightColor,
+        child: Container(
+          height: 100,
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+        ),
       ),
     );
   }

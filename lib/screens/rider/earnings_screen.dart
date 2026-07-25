@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme.dart';
 import '../../providers/rider_provider.dart';
+import '../../widgets/rider_skeleton.dart';
+import 'package:shimmer/shimmer.dart';
 
 class RiderEarningsScreen extends StatefulWidget {
   const RiderEarningsScreen({super.key});
@@ -42,11 +44,15 @@ class _RiderEarningsScreenState extends State<RiderEarningsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildTotalCard(summary),
+              riderProvider.isLoading && summary.isEmpty
+                ? const RiderStatSkeleton()
+                : _buildTotalCard(summary),
               const SizedBox(height: 32),
               Text('TRANSACTION HISTORY', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: isDark ? Colors.white38 : Colors.grey, letterSpacing: 1.2)),
               const SizedBox(height: 16),
-              _buildEarningsList(riderProvider),
+              riderProvider.isLoading && riderProvider.earningsHistory.isEmpty
+                ? Column(children: List.generate(5, (_) => const RiderOrderSkeleton()))
+                : _buildEarningsList(riderProvider),
               const SizedBox(height: 40),
             ],
           ),
@@ -153,7 +159,7 @@ class _RiderEarningsScreenState extends State<RiderEarningsScreen> {
                     const SizedBox(height: 2),
                     Text(
                       item['created_at'] != null 
-                        ? DateFormat('MMM dd, hh:mm a').format(DateTime.parse(item['created_at']))
+                        ? DateFormat('MMM dd, hh:mm a').format(DateTime.parse(item['created_at']).toLocal())
                         : 'Unknown date', 
                       style: TextStyle(color: isDark ? Colors.white24 : Colors.grey.shade400, fontSize: 11, fontWeight: FontWeight.bold)
                     ),

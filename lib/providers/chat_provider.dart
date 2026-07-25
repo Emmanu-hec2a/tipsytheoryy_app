@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:dio/dio.dart';
 
 class ChatProvider with ChangeNotifier {
   final ApiClient _apiClient = ApiClient();
@@ -111,11 +112,18 @@ class ChatProvider with ChangeNotifier {
         return true;
       }
       
-      // Handle the "No Rider Assigned" error from server if it comes as a 400
-      if (response.statusCode == 400 && response.data['error'] != null) {
+      // Capture detailed error message from server
+      if (response.data is Map && response.data['message'] != null) {
+        debugPrint('Send error: ${response.data['message']}');
+      } else if (response.data is Map && response.data['error'] != null) {
         debugPrint('Send error: ${response.data['error']}');
+      } else {
+        debugPrint('Send failed with status: ${response.statusCode}');
       }
 
+      return false;
+    } on DioException catch (e) {
+      debugPrint('Dio Error sending message: ${e.response?.data ?? e.message}');
       return false;
     } catch (e) {
       debugPrint('Error sending message: $e');

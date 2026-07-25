@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../../core/api_client.dart';
 import '../../core/theme.dart';
 import '../../models/order_model.dart';
+import 'package:shimmer/shimmer.dart';
 import 'chat_screen.dart';
 
 class OrderTrackingScreen extends StatefulWidget {
@@ -325,8 +326,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
       ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: isDark ? Colors.white : AppTheme.primaryColor))
+      body: _isLoading && _order == null
+          ? _buildTrackingSkeleton(isDark)
           : _errorMessage != null
               ? Center(child: Text(_errorMessage!, style: TextStyle(color: isDark ? Colors.white70 : Colors.black87)))
               : Column(
@@ -613,6 +614,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                               orderNumber: order.orderNumber,
                               recipientName: order.riderName ?? 'Rider',
                               recipientImage: order.riderImage,
+                              recipientRating: order.riderRating,
+                              recipientRole: 'Assigned Rider',
                             ),
                           ),
                         );
@@ -750,6 +753,46 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTrackingSkeleton(bool isDark) {
+    final baseColor = isDark ? AppTheme.darkShimmerBase : Colors.grey.shade100;
+    final highlightColor = isDark ? AppTheme.darkShimmerHighlight : Colors.white;
+
+    return Column(
+      children: [
+        Shimmer.fromColors(
+          baseColor: baseColor,
+          highlightColor: highlightColor,
+          child: Container(height: 250, color: Colors.white),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Shimmer.fromColors(
+              baseColor: baseColor,
+              highlightColor: highlightColor,
+              child: Column(
+                children: [
+                  Container(height: 100, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16))),
+                  const SizedBox(height: 32),
+                  ...List.generate(4, (i) => Padding(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: Row(
+                      children: [
+                        const CircleAvatar(radius: 12, backgroundColor: Colors.white),
+                        const SizedBox(width: 16),
+                        Container(width: 200, height: 14, color: Colors.white),
+                      ],
+                    ),
+                  )),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

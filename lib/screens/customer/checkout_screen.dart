@@ -7,6 +7,7 @@ import '../../providers/user_provider.dart';
 import '../../providers/promotion_provider.dart';
 import '../../core/api_client.dart';
 import 'payment_pending_screen.dart';
+import 'order_tracking_screen.dart';
 import 'age_verification_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
@@ -163,6 +164,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       final orderId = orderResponse.data['id'];
       final orderNumber = orderResponse.data['order_number'] ?? '#$orderId';
 
+      // Clear cart before navigating to prevent double-orders if they go back
+      cart.clearCart();
+
       if (_selectedPaymentMethod == 'mpesa' && totalAmount > 0) {
         final checkoutRequestId = orderResponse.data['checkout_request_id'];
         final mpesaError = orderResponse.data['mpesa_error'];
@@ -172,7 +176,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           throw Exception(mpesaError ?? 'M-Pesa STK Push could not be initiated. Please check your number or try again.');
         }
         
-        // ✨ SMOOTH TRANSITION: Navigate first, THEN clear cart
         if (mounted) {
           Navigator.of(context, rootNavigator: true).pushReplacement(
             MaterialPageRoute(
@@ -183,18 +186,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ),
             ),
           );
-          
-          // Clear cart in background after navigation starts
-          Future.delayed(const Duration(milliseconds: 500), () {
-            cart.clearCart();
-          });
         }
         return;
       }
 
-      cart.clearCart();
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/order-tracking', arguments: orderId);
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => OrderTrackingScreen(orderId: orderId)),
+        );
       }
     } catch (e) {
       if (mounted) {

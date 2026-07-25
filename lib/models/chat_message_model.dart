@@ -1,3 +1,5 @@
+import '../core/api_client.dart';
+
 class ChatMessageModel {
   final int id;
   final int orderId;
@@ -22,16 +24,23 @@ class ChatMessageModel {
   });
 
   factory ChatMessageModel.fromJson(Map<String, dynamic> json) {
+    String? photoUrl = json['sender_image'];
+
+    if (photoUrl != null && photoUrl.startsWith('/')) {
+      final base = ApiClient.baseUrl.replaceAll('/api/v1/', '');
+      photoUrl = "$base$photoUrl";
+    }
+
     return ChatMessageModel(
       id: json['id'],
       orderId: json['order'],
       senderId: json['sender'],
       senderName: json['sender_name'] ?? 'Unknown',
       senderRole: json['sender_role'] ?? 'customer',
-      senderImage: json['sender_image'],
+      senderImage: photoUrl,
       message: json['message'] ?? '',
       isRead: json['is_read'] ?? false,
-      createdAt: DateTime.parse(json['created_at']),
+      createdAt: DateTime.parse(json['created_at']).toLocal(),
     );
   }
 

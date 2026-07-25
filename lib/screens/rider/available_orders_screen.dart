@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../core/theme.dart';
 import '../../providers/rider_provider.dart';
 import '../../models/order_model.dart';
+import '../../widgets/rider_skeleton.dart';
 
 class AvailableOrdersScreen extends StatefulWidget {
   const AvailableOrdersScreen({super.key});
@@ -44,7 +45,9 @@ class _AvailableOrdersScreenState extends State<AvailableOrdersScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildEarningsOverview(riderProvider),
+                    riderProvider.isLoading && riderProvider.earningsSummary.isEmpty
+                        ? const RiderStatSkeleton()
+                        : _buildEarningsOverview(riderProvider),
                     const SizedBox(height: 32),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -57,10 +60,35 @@ class _AvailableOrdersScreenState extends State<AvailableOrdersScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
+                    if (riderProvider.error != null)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                riderProvider.error!,
+                                style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () => riderProvider.clearError(),
+                              icon: const Icon(Icons.close, color: Colors.red, size: 18),
+                            ),
+                          ],
+                        ),
+                      ),
                     if (!isOnline)
                       _buildOfflineOverlay()
                     else if (riderProvider.isLoading && availableOrders.isEmpty)
-                      const Center(child: Padding(padding: EdgeInsets.all(60), child: CircularProgressIndicator(color: AppTheme.primaryColor)))
+                      Column(
+                        children: List.generate(3, (index) => const RiderOrderSkeleton()),
+                      )
                     else if (availableOrders.isEmpty)
                       _buildEmptyState()
                     else
@@ -98,12 +126,18 @@ class _AvailableOrdersScreenState extends State<AvailableOrdersScreen> {
                 style: TextStyle(color: isOnline ? Colors.greenAccent : Colors.white54, fontSize: 10, fontWeight: FontWeight.w900)
               ),
               const SizedBox(width: 4),
-              Switch(
-                value: isOnline,
-                onChanged: (val) => provider.toggleAvailability(val),
-                activeColor: Colors.greenAccent,
-                inactiveThumbColor: Colors.white24,
-                inactiveTrackColor: Colors.black12,
+              SizedBox(
+                height: 30,
+                width: 50,
+                child: provider.isActionLoading 
+                  ? const Center(child: SizedBox(width: 15, height: 15, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)))
+                  : Switch(
+                      value: isOnline,
+                      onChanged: (val) => provider.toggleAvailability(val),
+                      activeColor: Colors.greenAccent,
+                      inactiveThumbColor: Colors.white24,
+                      inactiveTrackColor: Colors.black12,
+                    ),
               ),
             ],
           ),

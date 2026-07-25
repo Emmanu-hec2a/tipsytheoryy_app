@@ -97,4 +97,46 @@ class UserModel {
   }
 
   String get fullName => "${firstName ?? ''} ${lastName ?? ''}".trim();
+
+  UserModel copyWith({
+    int? id,
+    String? username,
+    String? email,
+    String? phone,
+    String? firstName,
+    String? lastName,
+    String? role,
+    int? loyaltyPoints,
+    double? walletBalance,
+    String? profilePicture,
+    bool? isAvailable,
+    bool? isAgeVerified,
+    int? riskScore,
+    String? bankName,
+    String? bankAccountName,
+    String? bankAccountNumber,
+    double? avgRating,
+    int? totalDeliveries,
+  }) {
+    return UserModel(
+      id: id ?? this.id,
+      username: username ?? this.username,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+      role: role ?? this.role,
+      loyaltyPoints: loyaltyPoints ?? this.loyaltyPoints,
+      walletBalance: walletBalance ?? this.walletBalance,
+      profilePicture: profilePicture ?? this.profilePicture,
+      isAvailable: isAvailable ?? this.isAvailable,
+      isAgeVerified: isAgeVerified ?? this.isAgeVerified,
+      riskScore: riskScore ?? this.riskScore,
+      bankName: bankName ?? this.bankName,
+      bankAccountName: bankAccountName ?? this.bankAccountName,
+      bankAccountNumber: bankAccountNumber ?? this.bankAccountNumber,
+      avgRating: avgRating ?? this.avgRating,
+      totalDeliveries: totalDeliveries ?? this.totalDeliveries,
+    );
+  }
 }

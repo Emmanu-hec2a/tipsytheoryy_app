@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:location/location.dart' as loc;
 import 'package:dio/dio.dart';
 import '../core/api_client.dart';
 import '../models/order_model.dart';
@@ -10,7 +11,10 @@ import '../models/user_model.dart';
 class RiderProvider with ChangeNotifier {
   final ApiClient _apiClient = ApiClient();
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  final loc.Location _locationService = loc.Location();
   Timer? _pollingTimer;
+  Timer? _locationHeartbeatTimer;
+  Position? _lastKnownPosition;
 
   UserModel? _riderProfile;
   List<OrderModel> _orderQueue = [];
@@ -18,6 +22,7 @@ class RiderProvider with ChangeNotifier {
   List<Map<String, dynamic>> _earningsHistory = [];
   Map<String, dynamic> _earningsSummary = {};
   bool _isLoading = false;
+  bool _isActionLoading = false;
   String? _error;
 
   UserModel? get riderProfile => _riderProfile;
@@ -26,6 +31,7 @@ class RiderProvider with ChangeNotifier {
   List<Map<String, dynamic>> get earningsHistory => _earningsHistory;
   Map<String, dynamic> get earningsSummary => _earningsSummary;
   bool get isLoading => _isLoading;
+  bool get isActionLoading => _isActionLoading;
   String? get error => _error;
   bool get isOnline => _riderProfile?.isAvailable ?? false;
 
@@ -43,6 +49,20 @@ class RiderProvider with ChangeNotifier {
   void stopRealtimePolling() {
     _pollingTimer?.cancel();
     _pollingTimer = null;
+    _stopLocationHeartbeat();
+  }
+
+  void _startLocationHeartbeat() {
+    _locationHeartbeatTimer?.cancel();
+    _locationHeartbeatTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      _pingLocation();
+    });
+    _pingLocation();
+  }
+
+  void _stopLocationHeartbeat() {
+    _locationHeartbeatTimer?.cancel();
+    _locationHeartbeatTimer = null;
   }
 
   Future<void> _pollData() async {
@@ -54,14 +74,22 @@ class RiderProvider with ChangeNotifier {
         return;
       }
 
-      final response = await _apiClient.get('rider/orders/queue/');
+      final response = await _apiClient.get(
+        'rider/orders/queue/',
+        queryParameters: _lastKnownPosition == null
+            ? null
+            : {
+                'lat': _lastKnownPosition!.latitude,
+                'lng': _lastKnownPosition!.longitude,
+              },
+      );
       if (response.statusCode == 200) {
         final List data = response.data;
         _orderQueue = data.map((json) => OrderModel.fromJson(json)).toList();
         notifyListeners();
 
         if (activeOrder != null) {
-          _pingLocation(activeOrder!.id);
+          _pingLocation(orderId: activeOrder!.id);
         }
       }
     } catch (e) {
@@ -69,7 +97,7 @@ class RiderProvider with ChangeNotifier {
     }
   }
 
-  Future<void> _pingLocation(int orderId) async {
+  Future<void> _pingLocation({int? orderId}) async {
     try {
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
@@ -83,8 +111,9 @@ class RiderProvider with ChangeNotifier {
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(accuracy: LocationAccuracy.high)
       );
+      _lastKnownPosition = position;
       await _apiClient.post('rider/location/ping/', data: {
-        'order_id': orderId,
+        if (orderId != null) 'order_id': orderId,
         'latitude': position.latitude,
         'longitude': position.longitude,
       });
@@ -109,6 +138,12 @@ class RiderProvider with ChangeNotifier {
 
       if (responses[0].statusCode == 200) {
         _riderProfile = UserModel.fromJson(responses[0].data);
+        if (isOnline) {
+          _startLocationHeartbeat();
+        } else {
+          _lastKnownPosition = null;
+          _stopLocationHeartbeat();
+        }
       }
       if (responses[1].statusCode == 200) {
         final List data = responses[1].data;
@@ -136,21 +171,93 @@ class RiderProvider with ChangeNotifier {
   }
 
   Future<void> toggleAvailability(bool available) async {
+    // 🛡️ Optimistic Update: Update UI instantly, but track the old state to revert if needed
+    final oldState = _riderProfile?.isAvailable ?? false;
+    if (_riderProfile != null) {
+      _riderProfile = _riderProfile!.copyWith(isAvailable: available);
+      notifyListeners();
+    }
+
+    _isActionLoading = true;
+    _error = null;
+
     try {
-      final response = await _apiClient.patch('rider/profile/', data: {
-        'is_available': available
-      });
+      Map<String, dynamic> payload = {'is_available': available};
+
+      // 🛰️ Location Guard for Online Toggle
+      if (available) {
+        LocationPermission permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+        }
+
+        if (permission == LocationPermission.deniedForever || permission == LocationPermission.denied) {
+          throw 'Location permissions are required to go online.';
+        }
+
+        bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+        if (!serviceEnabled) {
+          // 🪄 MAGIC PROMPT: Request user to turn on GPS without leaving the app
+          serviceEnabled = await _locationService.requestService();
+          if (!serviceEnabled) {
+            throw 'Please turn on your GPS to go online.';
+          }
+        }
+
+        // Fast-Track Location: Try last known first to avoid "loading for years"
+        Position? position = await Geolocator.getLastKnownPosition();
+        
+        // If no last known, or if it's too old, get current with a strict timeout
+        position ??= await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.medium,
+              timeLimit: Duration(seconds: 5),
+            ),
+        );
+
+        _lastKnownPosition = position;
+        payload['latitude'] = position.latitude;
+        payload['longitude'] = position.longitude;
+      }
+
+      final response = await _apiClient.patch('rider/profile/', data: payload);
       if (response.statusCode == 200) {
         _riderProfile = UserModel.fromJson(response.data);
-        notifyListeners();
+        if (available) {
+          _startLocationHeartbeat();
+        } else {
+          _lastKnownPosition = null;
+          _stopLocationHeartbeat();
+        }
       }
-    } catch (e) {
+    } on DioException catch (e) {
+      // Revert Optimistic Update
+      if (_riderProfile != null) {
+        _riderProfile = _riderProfile!.copyWith(isAvailable: oldState);
+      }
+      
+      if (e.response?.statusCode == 400) {
+        final data = e.response?.data;
+        _error = (data is Map) ? (data['message'] ?? data['error']) : "Action blocked.";
+      } else {
+        _error = "Server connection failed.";
+      }
       debugPrint("Toggle availability error: $e");
+    } catch (e) {
+      // Revert Optimistic Update
+      if (_riderProfile != null) {
+        _riderProfile = _riderProfile!.copyWith(isAvailable: oldState);
+      }
+      _error = e.toString();
+      debugPrint("Toggle availability generic error: $e");
+    } finally {
+      _isActionLoading = false;
+      notifyListeners();
     }
   }
 
   Future<bool> acceptOrder(int orderId) async {
-    _isLoading = true;
+    _isActionLoading = true;
     notifyListeners();
     try {
       final response = await _apiClient.post('rider/orders/$orderId/accept/');
@@ -162,14 +269,14 @@ class RiderProvider with ChangeNotifier {
       debugPrint("Accept order error: $e");
       _error = "Order already taken or connection error.";
     } finally {
-      _isLoading = false;
+      _isActionLoading = false;
       notifyListeners();
     }
     return false;
   }
 
   Future<bool> updateOrderStatus(int orderId, String newStatus, {String? verificationMethod, String? imagePath}) async {
-    _isLoading = true;
+    _isActionLoading = true;
     notifyListeners();
     try {
       dynamic data;
@@ -197,7 +304,7 @@ class RiderProvider with ChangeNotifier {
       debugPrint("Update order status error: $e");
       _error = "Failed to update order status.";
     } finally {
-      _isLoading = false;
+      _isActionLoading = false;
       notifyListeners();
     }
     return false;
@@ -209,8 +316,14 @@ class RiderProvider with ChangeNotifier {
     super.dispose();
   }
 
+  void clearError() {
+    _error = null;
+    notifyListeners();
+  }
+
   void clear() {
     stopRealtimePolling();
+    _lastKnownPosition = null;
     _riderProfile = null;
     _orderQueue = [];
     _deliveryHistory = [];

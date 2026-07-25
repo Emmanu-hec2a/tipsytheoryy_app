@@ -283,25 +283,6 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                     ),
                     
-                    if (!isRider) ...[
-                      const SizedBox(height: 12),
-                      _buildLabel('Location', isDark),
-                      DropdownButtonFormField<String>(
-                        value: _selectedLocation,
-                        dropdownColor: isDark ? Theme.of(context).cardColor : Colors.white,
-                        style: TextStyle(color: isDark ? Colors.white : Colors.black87),
-                        decoration: InputDecoration(
-                          prefixIcon: Icon(Icons.location_on_outlined, size: 20, color: isDark ? Colors.white38 : null),
-                          hintText: 'Select your area',
-                          hintStyle: TextStyle(color: isDark ? Colors.white24 : null),
-                          fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : null,
-                        ),
-                        items: _locations.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                        onChanged: (val) => setState(() => _selectedLocation = val),
-                        validator: (val) => val == null ? 'Required' : null,
-                      ),
-                    ],
-
                     if (isRider) ...[
                       const SizedBox(height: 12),
                       _buildLabel('Vehicle Type', isDark),
