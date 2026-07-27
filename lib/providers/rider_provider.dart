@@ -20,6 +20,7 @@ class RiderProvider with ChangeNotifier {
   List<OrderModel> _orderQueue = [];
   List<OrderModel> _deliveryHistory = [];
   List<Map<String, dynamic>> _earningsHistory = [];
+  List<dynamic> _payoutHistory = []; // 🆕 New Payout Stats
   Map<String, dynamic> _earningsSummary = {};
   bool _isLoading = false;
   bool _isActionLoading = false;
@@ -29,6 +30,7 @@ class RiderProvider with ChangeNotifier {
   List<OrderModel> get orderQueue => _orderQueue;
   List<OrderModel> get deliveryHistory => _deliveryHistory;
   List<Map<String, dynamic>> get earningsHistory => _earningsHistory;
+  List<dynamic> get payoutHistory => _payoutHistory;
   Map<String, dynamic> get earningsSummary => _earningsSummary;
   bool get isLoading => _isLoading;
   bool get isActionLoading => _isActionLoading;
@@ -303,6 +305,62 @@ class RiderProvider with ChangeNotifier {
     } catch (e) {
       debugPrint("Update order status error: $e");
       _error = "Failed to update order status.";
+    } finally {
+      _isActionLoading = false;
+      notifyListeners();
+    }
+    return false;
+  }
+
+  // 🆕 Payout & Panic Logic
+  Future<void> fetchPayoutHistory() async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final response = await _apiClient.get('rider/payouts/history/');
+      if (response.statusCode == 200) {
+        _payoutHistory = response.data;
+      }
+    } catch (e) {
+      debugPrint("Payout fetch error: $e");
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> triggerPanic() async {
+    _isActionLoading = true;
+    notifyListeners();
+    try {
+      final pos = await Geolocator.getCurrentPosition();
+      final response = await _apiClient.post('rider/panic/', data: {
+        'latitude': pos.latitude,
+        'longitude': pos.longitude,
+      });
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      debugPrint("Panic alert error: $e");
+      return false;
+    } finally {
+      _isActionLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> disputePayout(int payoutId, String reason) async {
+    _isActionLoading = true;
+    notifyListeners();
+    try {
+      final response = await _apiClient.post('rider/payouts/$payoutId/dispute/', data: {
+        'reason': reason,
+      });
+      if (response.statusCode == 200) {
+        await fetchPayoutHistory();
+        return true;
+      }
+    } catch (e) {
+      debugPrint("Dispute error: $e");
     } finally {
       _isActionLoading = false;
       notifyListeners();

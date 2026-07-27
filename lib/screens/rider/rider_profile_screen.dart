@@ -12,6 +12,8 @@ import '../../providers/order_provider.dart';
 import '../../models/user_model.dart';
 import '../customer/legal_content_screen.dart';
 import 'delivery_complete_screen.dart';
+import 'support_center_screen.dart';
+import 'payout_history_screen.dart';
 
 class RiderProfileScreen extends StatefulWidget {
   const RiderProfileScreen({super.key});
@@ -118,7 +120,7 @@ class _RiderProfileScreenState extends State<RiderProfileScreen> {
                 _buildMenuItem(
                   Icons.support_agent_rounded, 
                   'Support Center', 
-                  onTap: () => _contactSupport()
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SupportCenterScreen()))
                 ),
                 _buildMenuItem(
                   Icons.policy_outlined, 

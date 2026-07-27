@@ -126,8 +126,9 @@ class _CustomerShellState extends State<CustomerShell> with WidgetsBindingObserv
         backgroundColor: AppTheme.accentColor,
         behavior: SnackBarBehavior.floating,
         // 📍 DYNAMIC POSITIONING: Calculated based on screen height and status bar
+        // 🛡️ REPAIR: Increased offset from topPadding to 210 to ensure it clears deep notches/status bars
         margin: EdgeInsets.only(
-          bottom: MediaQuery.of(context).size.height - (topPadding + 140), 
+          bottom: MediaQuery.of(context).size.height - (max(topPadding, 44.0) + 160),
           left: 16, 
           right: 16
         ),

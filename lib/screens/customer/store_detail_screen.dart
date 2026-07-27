@@ -339,14 +339,14 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
           decoration: BoxDecoration(
-            color: isDark ? Theme.of(context).cardColor : const Color(0xFFF8FAFC),
+            color: isDark ? AppTheme.darkSurface.withValues(alpha: 0.6) : const Color(0xFFF8FAFC),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFF1F5F9)),
+            // Border removed to blend with background
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: isDark ? Colors.white70 : const Color(0xFF0D3B30), size: 16),
+              Icon(icon, color: isDark ? Colors.white38 : const Color(0xFF0D3B30), size: 16),
               const SizedBox(width: 6),
               Flexible(
                 child: Text(
@@ -354,7 +354,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: isDark ? Colors.white70 : const Color(0xFF0D3B30),
+                    color: isDark ? Colors.white38 : const Color(0xFF0D3B30),
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),

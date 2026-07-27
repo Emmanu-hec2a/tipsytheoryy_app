@@ -40,13 +40,13 @@ class CategoryChip extends StatelessWidget {
                   Text(_getEmoji(icon!), style: const TextStyle(fontSize: 14)),
                   const SizedBox(width: 8),
                   Text(
-                    name.toUpperCase(),
+                    name,
                     style: _textStyle(isSelected, isDark),
                   ),
                 ],
               )
             : Text(
-                name.toUpperCase(),
+                name,
                 style: _textStyle(isSelected, isDark),
               ),
         ),

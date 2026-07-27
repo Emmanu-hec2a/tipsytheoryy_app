@@ -46,6 +46,7 @@ class _RiderShellState extends State<RiderShell> {
         children: [
           PageView(
             controller: _pageController,
+            physics: const NeverScrollableScrollPhysics(), // 🛡️ Fix: Prevent conflict with map gestures
             onPageChanged: (index) {
               setState(() => _selectedIndex = index);
             },
