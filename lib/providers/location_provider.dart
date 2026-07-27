@@ -144,8 +144,45 @@ class LocationProvider with ChangeNotifier {
   }
 
   void setCurrentAddress(AddressModel address) async {
+    // 🛡️ UI INSTANCY: Update local state immediately for instant feedback
     _currentAddress = address;
+    
+    // Update the isDefault flag on the local list immediately
+    _savedAddresses = _savedAddresses.map((a) {
+      return a.copyWith(isDefault: a.id == address.id);
+    }).toList();
+    
     notifyListeners();
-    await _apiClient.patch('customer/addresses/${address.id}/', data: {'is_default': true});
+    
+    try {
+      await _apiClient.patch('customer/addresses/${address.id}/', data: {'is_default': true});
+      // Optionally re-fetch to sync with any server-side logic
+      // await fetchAddresses(); 
+    } catch (e) {
+      _error = "Failed to update default address: $e";
+      notifyListeners();
+    }
+  }
+
+  Future<bool> deleteAddress(int addressId) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final response = await _apiClient.delete('customer/addresses/$addressId/');
+      if (response.statusCode == 204 || response.statusCode == 200) {
+        _savedAddresses.removeWhere((a) => a.id == addressId);
+        if (_currentAddress?.id == addressId) {
+          _currentAddress = _savedAddresses.isNotEmpty ? _savedAddresses.first : null;
+        }
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _error = e.toString();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 }

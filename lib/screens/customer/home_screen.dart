@@ -12,6 +12,9 @@ import '../../models/category_model.dart';
 import 'store_detail_screen.dart';
 import 'featured_products_screen.dart';
 import 'stores_list_screen.dart';
+import 'shiriki_join_screen.dart';
+import 'shiriki_lobby_screen.dart';
+import '../../providers/shiriki_provider.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
   const CustomerHomeScreen({super.key});
@@ -28,6 +31,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadInitialData();
+      Provider.of<ShirikiProvider>(context, listen: false).loadPersistedSession();
     });
   }
 
@@ -78,6 +82,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                 children: [
                   const SizedBox(height: 16),
                   _buildCategories(productProvider),
+                  const SizedBox(height: 12),
+                  _buildShirikiBanner(),
                   const SizedBox(height: 12),
                   _buildProFilter(productProvider, locationProvider),
                   const SizedBox(height: 16), 
@@ -505,6 +511,96 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             style: TextStyle(color: isDark ? Colors.white24 : Colors.grey.shade400, fontSize: 11, fontWeight: FontWeight.bold),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildShirikiBanner() {
+    final shiriki = Provider.of<ShirikiProvider>(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // 🛡️ PERSISTENCE: If there's an active session, show the Resume Lobby banner
+    if (shiriki.activeInviteCode != null && shiriki.currentSession?.status == 'active') {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: GestureDetector(
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ShirikiLobbyScreen(inviteCode: shiriki.activeInviteCode!))),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(color: Colors.orange.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 4))
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), shape: BoxShape.circle),
+                  child: const Icon(Icons.flash_on_rounded, color: Colors.white, size: 24),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('ACTIVE SHIRIKI POT', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14, letterSpacing: 1)),
+                      Text('Pot is ${(shiriki.currentSession!.progress * 100).toInt()}% full. Resume Lobby!', style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 16),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: GestureDetector(
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ShirikiJoinScreen())),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [AppTheme.primaryColor, Color(0xFF1B4D42)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 4))
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), shape: BoxShape.circle),
+                child: const Icon(Icons.people_alt_rounded, color: AppTheme.accentColor, size: 24),
+              ),
+              const SizedBox(width: 16),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('SHIRIKI PAY', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14, letterSpacing: 1)),
+                    Text('Split the bill with friends!', style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white24, size: 16),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -35,4 +35,22 @@ class AddressModel {
       'is_default': isDefault,
     };
   }
+
+  AddressModel copyWith({
+    int? id,
+    String? name,
+    String? addressString,
+    double? latitude,
+    double? longitude,
+    bool? isDefault,
+  }) {
+    return AddressModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      addressString: addressString ?? this.addressString,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      isDefault: isDefault ?? this.isDefault,
+    );
+  }
 }

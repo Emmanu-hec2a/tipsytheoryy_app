@@ -25,6 +25,7 @@ class OrderModel {
   final double? riderLongitude;
   final DateTime createdAt;
   final int itemCount;
+  final bool isShiriki;
 
   // Store / Pickup Info
   final String? storeName;
@@ -66,6 +67,7 @@ class OrderModel {
     this.riderVerifiedAt,
     this.hasUnreadMessages = false,
     this.items = const [],
+    this.isShiriki = false,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -113,6 +115,7 @@ class OrderModel {
       requiresRiderVerification: json['requires_rider_verification'] ?? false,
       riderVerifiedAt: json['rider_verified_at'] != null ? DateTime.parse(json['rider_verified_at']).toLocal() : null,
       hasUnreadMessages: json['has_unread_messages'] ?? false,
+      isShiriki: json['is_shiriki'] ?? false,
       items: itemsList.map((i) => OrderItemModel.fromJson(i)).toList(),
     );
   }

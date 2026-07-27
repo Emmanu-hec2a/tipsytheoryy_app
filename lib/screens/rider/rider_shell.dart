@@ -17,6 +17,19 @@ class RiderShell extends StatefulWidget {
 
 class _RiderShellState extends State<RiderShell> {
   int _selectedIndex = 0;
+  late final PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: _selectedIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   final List<Widget> _screens = [
     const AvailableOrdersScreen(),
@@ -31,7 +44,13 @@ class _RiderShellState extends State<RiderShell> {
       extendBody: true, // Crucial for floating effect
       body: Stack(
         children: [
-          _screens[_selectedIndex],
+          PageView(
+            controller: _pageController,
+            onPageChanged: (index) {
+              setState(() => _selectedIndex = index);
+            },
+            children: _screens,
+          ),
           // 🛡️ Global Loader & Error Feedback
           Consumer<RiderProvider>(
             builder: (context, provider, child) {
@@ -68,7 +87,14 @@ class _RiderShellState extends State<RiderShell> {
       ),
       bottomNavigationBar: FloatingPillNavBar(
         selectedIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
+        onTap: (index) {
+          setState(() => _selectedIndex = index);
+          _pageController.animateToPage(
+            index,
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeOutQuart,
+          );
+        },
         items: [
           FloatingNavBarItem(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'DASHBOARD'),
           FloatingNavBarItem(icon: Icons.navigation_outlined, activeIcon: Icons.navigation_rounded, label: 'ACTIVE'),

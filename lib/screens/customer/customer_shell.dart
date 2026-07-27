@@ -19,6 +19,7 @@ class CustomerShell extends StatefulWidget {
 
 class _CustomerShellState extends State<CustomerShell> with WidgetsBindingObserver {
   int _selectedIndex = 0;
+  late final PageController _pageController;
   
   // Walk-and-Watch state
   StreamSubscription? _userAccelerometerSubscription;
@@ -32,12 +33,14 @@ class _CustomerShellState extends State<CustomerShell> with WidgetsBindingObserv
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(initialPage: _selectedIndex);
     WidgetsBinding.instance.addObserver(this);
     _initSafetyDetection();
   }
 
   @override
   void dispose() {
+    _pageController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _userAccelerometerSubscription?.cancel();
     super.dispose();
@@ -146,11 +149,24 @@ class _CustomerShellState extends State<CustomerShell> with WidgetsBindingObserv
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
-      body: _screens[_selectedIndex],
-      floatingActionButton: const TheoryAIFab(),
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: (index) {
+          setState(() => _selectedIndex = index);
+        },
+        children: _screens,
+      ),
+      // floatingActionButton: const TheoryAIFab(), // Temporarily hidden
       bottomNavigationBar: FloatingPillNavBar(
         selectedIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
+        onTap: (index) {
+          setState(() => _selectedIndex = index);
+          _pageController.animateToPage(
+            index,
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeOutQuart,
+          );
+        },
         items: [
           FloatingNavBarItem(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'HOME'),
           FloatingNavBarItem(icon: Icons.storefront_outlined, activeIcon: Icons.storefront_rounded, label: 'STORES'),

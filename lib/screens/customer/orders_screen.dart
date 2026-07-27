@@ -84,7 +84,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 120), // 🛡️ Bottom padding to avoid navbar obstruction
       physics: const BouncingScrollPhysics(),
       itemCount: orders.length,
       itemBuilder: (context, index) {
@@ -192,7 +192,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 width: 200,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.of(context).popUntil((route) => route.isFirst);
+                    // 🔄 REPAIR: Pop back to the Shell which defaults to the first route.
+                    // If we are already on the shell, we need to trigger the tab change.
+                    if (widget.isStandalone) {
+                      Navigator.of(context).pop();
+                    } else {
+                      // Navigate to the start of the app (Home Tab)
+                      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,
@@ -210,38 +217,46 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   Widget _buildFilters() {
     final filters = ['All', 'Pending', 'Assigned', 'Picked_up', 'Delivered', 'Cancelled'];
+
     return Container(
       color: AppTheme.primaryColor,
-      height: 60,
-      child: SingleChildScrollView(
+      height: 64,
+      child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         physics: const BouncingScrollPhysics(),
-        child: Row(
-          children: filters.map((f) => Container(
-            margin: const EdgeInsets.only(right: 8),
-            child: GestureDetector(
-              onTap: () => setState(() => _selectedFilter = f),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: _selectedFilter == f ? AppTheme.accentColor : Colors.white.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(30),
-                ),
+        itemCount: filters.length,
+        itemBuilder: (context, index) {
+          final f = filters[index];
+          final isSelected = _selectedFilter == f;
+          
+          return GestureDetector(
+            onTap: () => setState(() => _selectedFilter = f),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.only(right: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+              decoration: BoxDecoration(
+                // 🟠 Selected: Bright Orange | Inactive: Matches Dark Surface for consistency
+                color: isSelected 
+                    ? AppTheme.accentColor 
+                    : Colors.white.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(100),
+              ),
+              child: Center(
                 child: Text(
                   f.replaceAll('_', ' ').toUpperCase(),
                   style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 11,
-                    letterSpacing: 0.5
+                    color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.5),
+                    fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
+                    fontSize: 10,
+                    letterSpacing: 0.5,
                   ),
                 ),
               ),
             ),
-          )).toList(),
-        ),
+          );
+        },
       ),
     );
   }
@@ -317,9 +332,20 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   const SizedBox(height: 2),
                   Row(
                     children: [
-                      Icon(Icons.shopping_bag_outlined, size: 12, color: isDark ? Colors.white24 : Colors.grey.shade400),
+                      Icon(
+                        order.isShiriki ? Icons.people_alt_rounded : Icons.shopping_bag_outlined, 
+                        size: 12, 
+                        color: order.isShiriki ? AppTheme.accentColor : (isDark ? Colors.white24 : Colors.grey.shade400)
+                      ),
                       const SizedBox(width: 4),
-                      Text('${order.itemCount} items', style: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 11, fontWeight: FontWeight.bold)),
+                      Text(
+                        '${order.isShiriki ? "SHIRIKI • " : ""}${order.itemCount} items', 
+                        style: TextStyle(
+                          color: order.isShiriki ? AppTheme.accentColor : (isDark ? Colors.white38 : Colors.grey.shade500), 
+                          fontSize: 11, 
+                          fontWeight: FontWeight.bold
+                        )
+                      ),
                     ],
                   ),
                 ],
@@ -539,7 +565,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
   Widget _buildOrderSkeletons(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 120),
       physics: const NeverScrollableScrollPhysics(),
       itemCount: 4,
       itemBuilder: (_, __) => Shimmer.fromColors(

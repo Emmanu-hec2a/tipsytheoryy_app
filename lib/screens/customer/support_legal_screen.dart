@@ -103,23 +103,27 @@ class SupportLegalScreen extends StatelessWidget {
   }
 
   void _launchEmail() async {
-    final Uri emailLaunchUri = Uri(scheme: 'mailto', path: 'support@s.tipsytheoryy.com');
-    if (await canLaunchUrl(emailLaunchUri)) {
-      await launchUrl(emailLaunchUri, mode: LaunchMode.externalApplication);
-    }
+    final Uri url = Uri.parse('mailto:support@s.tipsytheoryy.com?subject=Support%20Request');
+    _launchUrl(url);
   }
 
   void _launchPhone() async {
-    final Uri phoneLaunchUri = Uri(scheme: 'tel', path: '+254718258821');
-    if (await canLaunchUrl(phoneLaunchUri)) {
-      await launchUrl(phoneLaunchUri, mode: LaunchMode.externalApplication);
-    }
+    final Uri url = Uri.parse('tel:+254718258821');
+    _launchUrl(url);
   }
 
   void _launchWhatsApp() async {
-    final Uri whatsappUri = Uri.parse("https://wa.me/254718258821");
-    if (await canLaunchUrl(whatsappUri)) {
-      await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
+    // 🛡️ Optimized for both WhatsApp and WhatsApp Business
+    final Uri url = Uri.parse("https://wa.me/254718258821?text=Hello%20TipsyTheoryy%20Support");
+    _launchUrl(url);
+  }
+
+  Future<void> _launchUrl(Uri url) async {
+    try {
+      // 🚀 Direct launch is more reliable than canLaunch on modern Android/iOS
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('Could not launch $url: $e');
     }
   }
 }

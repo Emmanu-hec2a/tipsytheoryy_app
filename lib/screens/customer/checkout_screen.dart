@@ -9,6 +9,8 @@ import '../../core/api_client.dart';
 import 'payment_pending_screen.dart';
 import 'order_tracking_screen.dart';
 import 'age_verification_screen.dart';
+import 'shiriki_lobby_screen.dart';
+import '../../providers/shiriki_provider.dart';
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
@@ -207,10 +209,83 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
+  Future<void> _initiateShiriki() async {
+    final cart = Provider.of<CartProvider>(context, listen: false);
+    final shirikiProvider = Provider.of<ShirikiProvider>(context, listen: false);
+    setState(() => _isLoading = true);
+
+    try {
+      // 1. Create Order with is_shiriki flag
+      final orderResponse = await _apiClient.post('customer/orders/create/', data: {
+        'items': cart.items.map((it) => {'product_id': it.product.id, 'quantity': it.quantity}).toList(),
+        'latitude': _currentPosition?.latitude,
+        'longitude': _currentPosition?.longitude,
+        'address_string': _capturedAddress,
+        'payment_method': 'mpesa',
+        'is_shiriki': true,
+      });
+
+      if (orderResponse.statusCode == 403 && orderResponse.data['error'] == 'age_verification_required') {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => Container(
+              height: MediaQuery.of(context).size.height * 0.85,
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+              ),
+              child: AgeVerificationScreen(
+                onVerified: () {
+                  Navigator.pop(context); // Close sheet
+                  _initiateShiriki(); // Retry
+                },
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
+      if (orderResponse.statusCode != 201) {
+        throw Exception(orderResponse.data['error'] ?? 'Order could not be created');
+      }
+
+      final orderNumber = orderResponse.data['order_number'];
+
+      // 2. Create Shiriki Session
+      final success = await shirikiProvider.createSession(orderNumber);
+
+      if (success && mounted) {
+        cart.clearCart();
+        Navigator.of(context, rootNavigator: true).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => ShirikiLobbyScreen(inviteCode: shirikiProvider.currentSession!.inviteCode),
+          ),
+        );
+      } else {
+        throw Exception(shirikiProvider.error ?? 'Failed to create Shiriki session');
+      }
+
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cart = Provider.of<CartProvider>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
     
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -225,7 +300,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.fromLTRB(20, 20, 20, bottomPadding > 0 ? bottomPadding + 40 : 60), // 🛡️ SYSTEM OVERLAY GUARD
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -303,7 +378,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               _buildSummaryRow('Tipsy Credit', '- KSh ${(Provider.of<UserProvider>(context).user?.walletBalance ?? 0).toStringAsFixed(2)}', isBold: true),
             const Divider(height: 24),
             _buildSummaryRow('Total', 'KSh ${_calculateFinalTotal(cart).toStringAsFixed(0)}', isBold: true),
-            const SizedBox(height: 40),
+            const SizedBox(height: 30),
+            if (_selectedPaymentMethod == 'mpesa') ...[
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _isLoading ? null : _initiateShiriki,
+                  icon: const Icon(Icons.people_alt_rounded),
+                  label: const Text('SHIRIKI SPLIT: PAY WITH FRIENDS', style: TextStyle(fontWeight: FontWeight.w900)),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: isDark ? AppTheme.accentColor : AppTheme.primaryColor, width: 2),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    foregroundColor: isDark ? AppTheme.accentColor : AppTheme.primaryColor,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             SizedBox(
               width: double.infinity,
               height: 56,
@@ -381,7 +473,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             title, 
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+              color: isSelected ? Colors.white : (isDark ? Colors.white70 : const Color(0xFF1E293B)),
             )
           ),
           const Spacer(),

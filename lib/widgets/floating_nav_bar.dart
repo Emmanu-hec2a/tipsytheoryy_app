@@ -15,8 +15,12 @@ class FloatingPillNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 🛡️ SYSTEM OVERLAY GUARD: Calculate bottom padding to avoid 3-button navigation obstruction
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final displayPadding = bottomPadding > 0 ? bottomPadding : 16.0;
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      padding: EdgeInsets.fromLTRB(20, 0, 20, displayPadding),
       child: Container(
         height: 70,
         decoration: BoxDecoration(

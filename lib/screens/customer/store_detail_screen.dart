@@ -14,6 +14,7 @@ import '../../providers/favourite_provider.dart';
 import '../../providers/promotion_provider.dart';
 import '../../widgets/pro_badge.dart';
 import '../../widgets/product_card.dart';
+import '../../widgets/category_chip.dart';
 import '../../models/promotion_model.dart';
 
 class StoreDetailScreen extends StatefulWidget {
@@ -367,37 +368,19 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
 
   Widget _buildCategoryFilter(List<String> categories) {
     if (categories.length <= 1) return const SizedBox.shrink();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return SizedBox(
-      height: 40,
-      child: ListView.separated(
+      height: 42,
+      child: ListView.builder(
         scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
         itemCount: categories.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
           final category = categories[index];
           final isSelected = _selectedCategory == category;
-          return InkWell(
+          return CategoryChip(
+            name: category,
+            isSelected: isSelected,
             onTap: () => setState(() => _selectedCategory = category),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: isSelected ? AppTheme.primaryColor : (isDark ? Theme.of(context).cardColor : const Color(0xFFF8FAFC)),
-                borderRadius: BorderRadius.circular(100),
-                border: Border.all(
-                  color: isSelected ? AppTheme.primaryColor : (isDark ? Colors.white10 : const Color(0xFFF1F5F9)),
-                ),
-              ),
-              child: Text(
-                category,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : (isDark ? Colors.white38 : const Color(0xFF64748B)),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                ),
-              ),
-            ),
           );
         },
       ),

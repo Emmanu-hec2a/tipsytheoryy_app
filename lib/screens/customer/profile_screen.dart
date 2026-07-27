@@ -94,18 +94,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       onTap: () => _launchSupportUrl(),
                     ),
                     _buildMenuItem(Icons.headset_mic_outlined, 'Help & Support', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SupportLegalScreen()))),
-                    _buildMenuItem(Icons.info_outline_rounded, 'About TipsyTheoryy', onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const LegalContentScreen(
-                        title: 'About TipsyTheoryy',
-                        content: 'TipsyTheoryy is your ultimate destination for premium spirits, wines, and beers delivered right to your doorstep. We partner with verified merchants to ensure quality and authenticity in every sip.',
-                      )));
-                    }),
-                    _buildMenuItem(Icons.privacy_tip_outlined, 'Privacy Policy', onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const LegalContentScreen(
-                        title: 'Privacy Policy',
-                        content: 'At TipsyTheoryy, your privacy is our priority. We collect minimal data to provide our services and ensure your orders reach you safely... [Full Policy Content Here]',
-                      )));
-                    }),
                   ]),
                   const SizedBox(height: 120), // Extra spacing to ensure last items aren't blocked by floating nav
                 ],
