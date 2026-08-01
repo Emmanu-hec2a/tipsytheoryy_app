@@ -95,6 +95,10 @@ class ShirikiProvider with ChangeNotifier {
     required double amount,
     required String phone,
   }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
     try {
       final response = await _apiClient.post('customer/shiriki/contribute/', data: {
         'invite_code': inviteCode,
@@ -102,9 +106,19 @@ class ShirikiProvider with ChangeNotifier {
         'phone': phone,
       });
 
-      return response.data;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return response.data;
+      } else {
+        final err = response.data['error'] ?? 'Contribution failed';
+        _error = err;
+        return {'success': false, 'error': err};
+      }
     } catch (e) {
-      return {'error': e.toString()};
+      _error = e.toString();
+      return {'success': false, 'error': e.toString()};
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 }

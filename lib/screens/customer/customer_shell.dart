@@ -9,6 +9,8 @@ import 'profile_screen.dart';
 import 'dart:async';
 import 'dart:math';
 import 'package:sensors_plus/sensors_plus.dart';
+import '../../services/notification_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class CustomerShell extends StatefulWidget {
   const CustomerShell({super.key});
@@ -23,6 +25,7 @@ class _CustomerShellState extends State<CustomerShell> with WidgetsBindingObserv
   
   // Walk-and-Watch state
   StreamSubscription? _userAccelerometerSubscription;
+  StreamSubscription? _notificationTapSubscription;
   DateTime _lastSafetyNotice = DateTime.now().subtract(const Duration(minutes: 5));
   
   // 🛡️ Pro-Tier Safety Logic
@@ -36,6 +39,7 @@ class _CustomerShellState extends State<CustomerShell> with WidgetsBindingObserv
     _pageController = PageController(initialPage: _selectedIndex);
     WidgetsBinding.instance.addObserver(this);
     _initSafetyDetection();
+    _initNotificationDeepLinking();
   }
 
   @override
@@ -43,6 +47,7 @@ class _CustomerShellState extends State<CustomerShell> with WidgetsBindingObserv
     _pageController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _userAccelerometerSubscription?.cancel();
+    _notificationTapSubscription?.cancel();
     super.dispose();
   }
 
@@ -139,6 +144,30 @@ class _CustomerShellState extends State<CustomerShell> with WidgetsBindingObserv
     );
   }
 
+  void _initNotificationDeepLinking() {
+    _notificationTapSubscription = NotificationService().onNotificationTap.listen((message) {
+      final type = message.data['type'];
+      
+      if (type == 'daily_digest' || type == 'marketing_blast') {
+        // Redirect to STORES tab
+        _onTabTap(1);
+      } else if (type == 'stk_initiated' || type == 'order_status_update') {
+        // Redirect to ORDERS tab
+        _onTabTap(2);
+      }
+    });
+  }
+
+  void _onTabTap(int index) {
+    if (_selectedIndex == index) return;
+    setState(() => _selectedIndex = index);
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.decelerate,
+    );
+  }
+
   final List<Widget> _screens = [
     const CustomerHomeScreen(),
     const StoresListScreen(),
@@ -152,6 +181,7 @@ class _CustomerShellState extends State<CustomerShell> with WidgetsBindingObserv
       extendBody: true,
       body: PageView(
         controller: _pageController,
+        physics: const BouncingScrollPhysics(), // 🛡️ Restored & Improved: Smooth physics-based swiping
         onPageChanged: (index) {
           setState(() => _selectedIndex = index);
         },
@@ -160,14 +190,7 @@ class _CustomerShellState extends State<CustomerShell> with WidgetsBindingObserv
       // floatingActionButton: const TheoryAIFab(), // Temporarily hidden
       bottomNavigationBar: FloatingPillNavBar(
         selectedIndex: _selectedIndex,
-        onTap: (index) {
-          setState(() => _selectedIndex = index);
-          _pageController.animateToPage(
-            index,
-            duration: const Duration(milliseconds: 400),
-            curve: Curves.easeOutQuart,
-          );
-        },
+        onTap: _onTabTap,
         items: [
           FloatingNavBarItem(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'HOME'),
           FloatingNavBarItem(icon: Icons.storefront_outlined, activeIcon: Icons.storefront_rounded, label: 'STORES'),

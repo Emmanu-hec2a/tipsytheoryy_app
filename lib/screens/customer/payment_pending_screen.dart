@@ -8,6 +8,7 @@ import '../../models/order_model.dart';
 import 'order_tracking_screen.dart';
 import 'payment_result_screen.dart';
 import 'customer_shell.dart';
+import '../../services/notification_service.dart';
 
 class PaymentPendingScreen extends StatefulWidget {
   final int orderId;
@@ -30,18 +31,39 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen> with Widget
   bool _isChecking = false;
   String _statusMessage = 'An M-Pesa STK push has been sent to your phone. Please enter your PIN to complete the payment.';
   Timer? _pollTimer;
+  StreamSubscription? _fcmSubscription;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _startPolling();
+
+    // 🛡️ Task: Listen for phone format errors or progress
+    _fcmSubscription = NotificationService().onMessageReceived.listen((message) {
+      final type = message.data['type'];
+      if (type == 'phone_format_error') {
+        _pollTimer?.cancel();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Invalid phone number. Please check the format and try again."),
+              backgroundColor: Colors.red,
+            ),
+          );
+          _showRetryDialog();
+        }
+      } else if (type == 'stk_initiated' || type == 'stk_confirmed') {
+        _checkPaymentStatus();
+      }
+    });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _pollTimer?.cancel();
+    _fcmSubscription?.cancel();
     super.dispose();
   }
 

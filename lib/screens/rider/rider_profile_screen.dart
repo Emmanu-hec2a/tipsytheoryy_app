@@ -22,7 +22,9 @@ class RiderProfileScreen extends StatefulWidget {
   State<RiderProfileScreen> createState() => _RiderProfileScreenState();
 }
 
-class _RiderProfileScreenState extends State<RiderProfileScreen> {
+class _RiderProfileScreenState extends State<RiderProfileScreen> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
   bool _isSaving = false;
 
   @override
@@ -53,6 +55,7 @@ class _RiderProfileScreenState extends State<RiderProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final userProvider = Provider.of<UserProvider>(context);
     final riderProvider = Provider.of<RiderProvider>(context);
     final authProvider = Provider.of<AuthProvider>(context);

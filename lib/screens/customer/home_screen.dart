@@ -23,7 +23,10 @@ class CustomerHomeScreen extends StatefulWidget {
   State<CustomerHomeScreen> createState() => _CustomerHomeScreenState();
 }
 
-class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
+class _CustomerHomeScreenState extends State<CustomerHomeScreen> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true; // 🛡️ Keeps map/list state alive during tab switches
+
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -60,6 +63,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // 🛡️ Required for AutomaticKeepAliveClientMixin
     final productProvider = Provider.of<ProductProvider>(context);
     final locationProvider = Provider.of<LocationProvider>(context);
     final isSearching = _searchController.text.isNotEmpty || productProvider.selectedCategory != 'All';

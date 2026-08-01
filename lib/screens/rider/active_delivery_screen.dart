@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter/services.dart';
 import '../../core/theme.dart';
 import '../../providers/rider_provider.dart';
 import '../../models/order_model.dart';
@@ -19,11 +20,14 @@ class ActiveDeliveryScreen extends StatefulWidget {
   State<ActiveDeliveryScreen> createState() => _ActiveDeliveryScreenState();
 }
 
-class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
+class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
   GoogleMapController? _mapController;
   Position? _currentRiderPosition;
   List<LatLng> _polylinePoints = [];
   StreamSubscription<Position>? _positionStream;
+  bool _isFollowing = true; // 🛡️ UBER/BOLT Style: Persistent Follow State
 
   @override
   void initState() {
@@ -52,20 +56,24 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
   }
 
   void _updateInAppNavigation(Position position) {
-    if (_mapController == null) return;
+    if (_mapController == null || !_isFollowing) return;
     
     // Auto-rotate and tilt the camera to face the direction of travel
     // This creates an "in-app navigation" feel
-    _mapController!.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(
-          target: LatLng(position.latitude, position.longitude),
-          zoom: 17,
-          tilt: 45,
-          bearing: position.heading,
+    try {
+      _mapController!.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: LatLng(position.latitude, position.longitude),
+            zoom: 17,
+            tilt: 45,
+            bearing: position.heading,
+          ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      debugPrint("Map animation failed: $e");
+    }
     
     // Refresh route occasionally
     _fetchRoute();
@@ -128,6 +136,7 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final riderProvider = Provider.of<RiderProvider>(context);
     final isOnline = riderProvider.isOnline;
     final activeOrder = riderProvider.activeOrder;
@@ -164,8 +173,70 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
               _buildMapView(activeOrder, isDark),
               _buildFloatingHeader(activeOrder),
               _buildDraggableDetails(activeOrder, riderProvider, isDark),
+              _buildQuickPanicButton(riderProvider),
+              if (!_isFollowing)
+                _buildRecenterButton(),
             ],
           ),
+    );
+  }
+
+  Widget _buildRecenterButton() {
+    return Positioned(
+      bottom: MediaQuery.of(context).size.height * 0.4 - 75,
+      right: 16,
+      child: FloatingActionButton.extended(
+        onPressed: () {
+          setState(() => _isFollowing = true);
+          if (_currentRiderPosition != null) {
+            _updateInAppNavigation(_currentRiderPosition!);
+          }
+        },
+        backgroundColor: AppTheme.primaryColor,
+        icon: const Icon(Icons.navigation_rounded, color: Colors.white, size: 20),
+        label: const Text('RECENTER', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11)),
+      ),
+    );
+  }
+
+  Widget _buildQuickPanicButton(RiderProvider provider) {
+    return Positioned(
+      bottom: MediaQuery.of(context).size.height * 0.4,
+      right: 16,
+      child: GestureDetector(
+        onLongPressStart: (_) => HapticFeedback.mediumImpact(),
+        onLongPress: () async {
+          HapticFeedback.heavyImpact();
+          final success = await provider.triggerPanic();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(success ? '🚨 EMERGENCY ALERTS SENT!' : 'Failed to send panic alert.'),
+                backgroundColor: success ? Colors.red : Colors.orange,
+              ),
+            );
+          }
+        },
+        child: Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            color: Colors.red,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(color: Colors.red.withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 5))
+            ],
+            border: Border.all(color: Colors.white, width: 3),
+          ),
+          child: const Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.white, size: 24),
+              Text('SOS', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -223,33 +294,45 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> {
         ),
     };
 
-    return GoogleMap(
-      initialCameraPosition: CameraPosition(
-        target: cameraTarget,
-        zoom: 15,
+    return Listener(
+      onPointerDown: (_) {
+        // 🛡️ UBER/BOLT Logic: If user touches the map, pause following
+        if (_isFollowing) setState(() => _isFollowing = false);
+      },
+      child: GoogleMap(
+        initialCameraPosition: CameraPosition(
+          target: cameraTarget,
+          zoom: 15,
+        ),
+        myLocationEnabled: true,
+        myLocationButtonEnabled: false, 
+        zoomControlsEnabled: true,
+        mapType: MapType.normal,
+        padding: const EdgeInsets.only(bottom: 250), // 🛡️ Offset logical center so rider icon is above bottom sheet
+        style: isDark ? AppTheme.midnightMapStyle : null,
+        onCameraMoveStarted: () {
+          // Keep empty if not needed, or add logic here
+        },
+        onMapCreated: (controller) {
+          _mapController = controller;
+          if (_isFollowing) {
+            _updateCameraBounds(storePos, customerPos, riderPos, isHeadingToPickup);
+          }
+        },
+        markers: markers,
+        polylines: {
+          if (_polylinePoints.isNotEmpty)
+            Polyline(
+              polylineId: const PolylineId('route'),
+              points: _polylinePoints,
+              color: AppTheme.primaryColor,
+              width: 5,
+              jointType: JointType.round,
+              startCap: Cap.roundCap,
+              endCap: Cap.roundCap,
+            ),
+        },
       ),
-      myLocationEnabled: true,
-      myLocationButtonEnabled: true,
-      zoomControlsEnabled: true,
-      mapType: MapType.normal,
-      style: isDark ? AppTheme.midnightMapStyle : null,
-      onMapCreated: (controller) {
-        _mapController = controller;
-        _updateCameraBounds(storePos, customerPos, riderPos, isHeadingToPickup);
-      },
-      markers: markers,
-      polylines: {
-        if (_polylinePoints.isNotEmpty)
-          Polyline(
-            polylineId: const PolylineId('route'),
-            points: _polylinePoints,
-            color: AppTheme.primaryColor,
-            width: 5,
-            jointType: JointType.round,
-            startCap: Cap.roundCap,
-            endCap: Cap.roundCap,
-          ),
-      },
     );
   }
 

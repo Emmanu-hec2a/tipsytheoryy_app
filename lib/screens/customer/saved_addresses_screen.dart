@@ -42,7 +42,7 @@ class SavedAddressesScreen extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: isDark ? Theme.of(context).cardColor : Colors.white,
                               borderRadius: BorderRadius.circular(16),
-                              border: addr.isDefault ? Border.all(color: AppTheme.accentColor, width: 2) : (isDark ? Border.all(color: Colors.white10) : null),
+                              border: addr.isDefault ? Border.all(color: AppTheme.accentColor, width: 2) : null,
                             ),
                             child: Row(
                               children: [
@@ -80,32 +80,35 @@ class SavedAddressesScreen extends StatelessWidget {
                         },
                       ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 55,
-                  child: ElevatedButton.icon(
-                    onPressed: locProvider.isLoading ? null : () async {
-                      await locProvider.captureCurrentLocation();
-                      if (context.mounted) {
-                        if (locProvider.error != null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(locProvider.error!), backgroundColor: Colors.red),
-                          );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Address added successfully!'), backgroundColor: Colors.green),
-                          );
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 55,
+                    child: ElevatedButton.icon(
+                      onPressed: locProvider.isLoading ? null : () async {
+                        await locProvider.captureCurrentLocation();
+                        if (context.mounted) {
+                          if (locProvider.error != null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(locProvider.error!), backgroundColor: Colors.red),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Address added successfully!'), backgroundColor: Colors.green),
+                            );
+                          }
                         }
-                      }
-                    },
-                    icon: locProvider.isLoading 
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Icon(Icons.my_location),
-                    label: Text(
-                      locProvider.isLoading ? 'LOCATING...' : 'ADD CURRENT LOCATION', 
-                      style: const TextStyle(fontWeight: FontWeight.w900)
+                      },
+                      icon: locProvider.isLoading 
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Icon(Icons.my_location),
+                      label: Text(
+                        locProvider.isLoading ? 'LOCATING...' : 'ADD CURRENT LOCATION', 
+                        style: const TextStyle(fontWeight: FontWeight.w900)
+                      ),
                     ),
                   ),
                 ),

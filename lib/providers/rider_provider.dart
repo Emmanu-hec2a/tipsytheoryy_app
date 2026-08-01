@@ -368,6 +368,24 @@ class RiderProvider with ChangeNotifier {
     return false;
   }
 
+  Future<bool> reportIssue(String message) async {
+    _isActionLoading = true;
+    notifyListeners();
+    try {
+      final response = await _apiClient.post('rider/report-issue/', data: {
+        'message': message,
+        'type': 'General Support'
+      });
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint("Report issue error: $e");
+      return false;
+    } finally {
+      _isActionLoading = false;
+      notifyListeners();
+    }
+  }
+
   @override
   void dispose() {
     stopRealtimePolling();

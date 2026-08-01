@@ -6,6 +6,8 @@ import 'dart:async';
 import '../../core/theme.dart';
 import '../../providers/shiriki_provider.dart';
 import '../../providers/user_provider.dart';
+import '../../models/shiriki_session_model.dart';
+import '../../services/notification_service.dart';
 import 'order_tracking_screen.dart';
 
 class ShirikiLobbyScreen extends StatefulWidget {
@@ -21,15 +23,42 @@ class _ShirikiLobbyScreenState extends State<ShirikiLobbyScreen> {
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   bool _isProcessing = false;
+  bool _isWaitingForConfirmation = false;
+  int _confirmationSecondsRemaining = 0;
+  Timer? _confirmationCountdownTimer;
+  StreamSubscription? _fcmSubscription;
 
   @override
   void initState() {
     super.initState();
     _fetchSession();
-    _timer = Timer.periodic(const Duration(seconds: 10), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 30), (timer) { // 🛡️ Task 3: Low-frequency fallback
       _fetchSession();
     });
     
+    // 🛡️ Task 3: Listen for FCM progress updates
+    _fcmSubscription = NotificationService().onMessageReceived.listen((message) {
+      final type = message.data['type'];
+      if (type == 'shiriki_progress' || type == 'stk_confirmed') {
+        debugPrint('Shiriki progress/confirmation FCM received, refreshing...');
+        _fetchSession();
+        // If it was my confirmation, the _fetchSession logic will handle calling _stopWaiting()
+      } else if (type == 'phone_format_error' || type == 'stk_failed') {
+        // 🛡️ Task: Handle failure/cancellation specifically
+        _stopWaiting();
+        if (mounted) {
+          final reason = message.data['reason'] ?? message.data['error'] ?? "Payment could not be completed.";
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(reason),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        _fetchSession(); // Refresh to show 'failed' status in list
+      }
+    });
+
     // Prefill phone
     final user = Provider.of<UserProvider>(context, listen: false).user;
     if (user?.phone != null) {
@@ -40,6 +69,8 @@ class _ShirikiLobbyScreenState extends State<ShirikiLobbyScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _confirmationCountdownTimer?.cancel();
+    _fcmSubscription?.cancel();
     _amountController.dispose();
     _phoneController.dispose();
     super.dispose();
@@ -48,7 +79,45 @@ class _ShirikiLobbyScreenState extends State<ShirikiLobbyScreen> {
   Future<void> _fetchSession() async {
     await Provider.of<ShirikiProvider>(context, listen: false).fetchSession(widget.inviteCode);
     final session = Provider.of<ShirikiProvider>(context, listen: false).currentSession;
-    
+    if (session?.status == 'active' && _isWaitingForConfirmation) {
+      // Check if user's contribution confirmed OR failed
+      final user = Provider.of<UserProvider>(context, listen: false).user;
+      
+      final myContribution = session?.contributions.firstWhere(
+        (c) => c.userId == user?.id && (c.status == 'confirmed' || c.status == 'failed'),
+        orElse: () => ShirikiContributionModel(id: -1, userId: -1, username: '', amount: 0, status: '', createdAt: DateTime.now())
+      );
+
+      if (myContribution != null && myContribution.id != -1) {
+        _stopWaiting();
+        
+        if (myContribution.status == 'confirmed') {
+          // Task 4: Surface wallet credits
+          if (myContribution.walletCreditAmount > 0) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'The pot was already full! KSh ${myContribution.walletCreditAmount.toStringAsFixed(0)} was added to your Tipsy Wallet. 🥂',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                backgroundColor: AppTheme.accentColor,
+                duration: const Duration(seconds: 8),
+              ),
+            );
+          }
+          // Refresh wallet balance
+          Provider.of<UserProvider>(context, listen: false).fetchProfile();
+        } else if (myContribution.status == 'failed') {
+           ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Payment confirmation failed. Please try again.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+
     if (session?.status == 'completed' && mounted) {
       _timer?.cancel();
       // Navigate to tracking if order is finalized
@@ -68,6 +137,38 @@ class _ShirikiLobbyScreenState extends State<ShirikiLobbyScreen> {
         "Invite Code: ${session.inviteCode}\n"
         "Download TipsyTheoryy to join!";
     Share.share(text);
+  }
+
+  void _startWaiting() {
+    setState(() {
+      _isWaitingForConfirmation = true;
+      _confirmationSecondsRemaining = 120; // 🛡️ Task 2: 120s timeout
+    });
+    
+    _confirmationCountdownTimer?.cancel();
+    _confirmationCountdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_confirmationSecondsRemaining > 0) {
+        setState(() => _confirmationSecondsRemaining--);
+      } else {
+        _stopWaiting(timeout: true);
+      }
+    });
+  }
+
+  void _stopWaiting({bool timeout = false}) {
+    _confirmationCountdownTimer?.cancel();
+    setState(() {
+      _isWaitingForConfirmation = false;
+    });
+
+    if (timeout && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Confirmation is taking longer than expected. We'll notify you once it's complete! 🥂"),
+          backgroundColor: AppTheme.primaryColor,
+        ),
+      );
+    }
   }
 
   @override
@@ -109,7 +210,9 @@ class _ShirikiLobbyScreenState extends State<ShirikiLobbyScreen> {
             _buildInviteCard(session, isDark),
             const SizedBox(height: 24),
             _buildContributorsList(session, isDark),
-            const SizedBox(height: 120),
+            // 🛡️ Fix: Add dynamic padding at the bottom of the scroll view 
+            // to ensure content isn't hidden behind the persistent BottomSheet.
+            SizedBox(height: session.remainingAmount > 0 ? 250 : 120),
           ],
         ),
       ),
@@ -172,7 +275,6 @@ class _ShirikiLobbyScreenState extends State<ShirikiLobbyScreen> {
       decoration: BoxDecoration(
         color: isDark ? Theme.of(context).cardColor : Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: isDark ? Border.all(color: Colors.white.withValues(alpha: 0.05)) : null,
         boxShadow: isDark ? [] : [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 20)],
       ),
       child: Column(
@@ -229,7 +331,7 @@ class _ShirikiLobbyScreenState extends State<ShirikiLobbyScreen> {
         else
           ListView.builder(
             shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
+            physics: const ClampingScrollPhysics(), // 🛡️ Fix: Ensure it works inside SingleChildScrollView
             itemCount: session.contributions.length,
             itemBuilder: (context, index) {
               final contribution = session.contributions[index];
@@ -252,9 +354,16 @@ class _ShirikiLobbyScreenState extends State<ShirikiLobbyScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(contribution.username, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                           Text(
-                            contribution.status.toUpperCase(),
+                            contribution.username, 
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold, 
+                              fontSize: 13,
+                              color: contribution.status == 'confirmed' ? (isDark ? Colors.white : Colors.black87) : Colors.grey,
+                            )
+                          ),
+                          Text(
+                            contribution.status == 'confirmed' ? 'CONFIRMED' : 'CONFIRMING...',
                             style: TextStyle(
                               fontSize: 9,
                               fontWeight: FontWeight.w900,
@@ -266,7 +375,11 @@ class _ShirikiLobbyScreenState extends State<ShirikiLobbyScreen> {
                     ),
                     Text(
                       'KSh ${contribution.amount.toStringAsFixed(0)}',
-                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900, 
+                        fontSize: 14,
+                        color: contribution.status == 'confirmed' ? (isDark ? Colors.white : Colors.black87) : Colors.grey,
+                      ),
                     ),
                   ],
                 ),
@@ -285,13 +398,36 @@ class _ShirikiLobbyScreenState extends State<ShirikiLobbyScreen> {
       decoration: BoxDecoration(
         color: isDark ? Theme.of(context).cardColor : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-        border: isDark ? Border.all(color: Colors.white.withValues(alpha: 0.05)) : null,
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (session.remainingAmount > 0) ...[
+          if (_isWaitingForConfirmation)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Column(
+                children: [
+                  const SizedBox(
+                    width: 24, height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.accentColor),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Waiting for confirmation...', 
+                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _confirmationSecondsRemaining > 60 
+                      ? 'This can take a minute' 
+                      : 'Finalizing your contribution...',
+                    style: const TextStyle(color: Colors.grey, fontSize: 11),
+                  ),
+                ],
+              ),
+            )
+          else if (session.remainingAmount > 0) ...[
              Row(
                 children: [
                   Expanded(
@@ -390,11 +526,31 @@ class _ShirikiLobbyScreenState extends State<ShirikiLobbyScreen> {
         const SnackBar(content: Text('STK Push sent! Please confirm on your phone.'), backgroundColor: Colors.green),
       );
       _amountController.clear();
+      _startWaiting(); // 🛡️ Task 2: Start waiting state
       _fetchSession();
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['error'] ?? 'Payment failed'), backgroundColor: Colors.red),
-      );
+      final String errorMsg = result['error'] ?? 'Payment failed';
+      final double? remaining = result['remaining']?.toDouble();
+
+      if (remaining != null && remaining > 0) {
+        // Task 1: Handle remaining balance error
+        _amountController.text = remaining.toStringAsFixed(0);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Amount adjusted to remaining balance: KSh ${remaining.toStringAsFixed(0)}'),
+            backgroundColor: Colors.orange,
+            action: SnackBarAction(
+              label: 'CONFIRM',
+              textColor: Colors.white,
+              onPressed: _submitContribution,
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 }

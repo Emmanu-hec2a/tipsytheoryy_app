@@ -202,9 +202,6 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                 decoration: BoxDecoration(
                   color: isDark ? Theme.of(context).cardColor : Colors.white,
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF1F5F9),
-                  ),
                   boxShadow: isDark ? [] : [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.03),
@@ -749,7 +746,6 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
         decoration: BoxDecoration(
           color: isDark ? Theme.of(context).cardColor : const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(32),
-          border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFF1F5F9)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

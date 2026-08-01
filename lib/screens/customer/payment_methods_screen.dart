@@ -51,7 +51,7 @@ class PaymentMethodsScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark ? Theme.of(context).cardColor : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: isEnabled ? Border.all(color: Colors.green.shade200) : (isDark ? Border.all(color: Colors.white10) : null),
+        border: isEnabled ? Border.all(color: Colors.green.shade200) : null,
       ),
       child: Row(
         children: [

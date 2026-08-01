@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:dio/dio.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../core/api_client.dart';
 import '../models/product_model.dart';
@@ -120,31 +121,64 @@ class ProductProvider with ChangeNotifier {
     final role = await _storage.read(key: 'role');
     if (role != 'customer') return;
 
-    _isLoading = true; // Legacy support
+    _isLoading = true; 
     _isFeaturedLoading = true;
     _isStoresLoading = true;
     _isCategoriesLoading = true;
     _error = null;
     notifyListeners();
 
-    // 1. Fetch Featured Products
-    _apiClient.get('customer/products/?is_featured=true').then((response) {
-      if (response.statusCode == 200) {
-        final List data = response.data;
+    try {
+      // 🚀 Parallel Execution: Fetch all home data concurrently for speed
+      final results = await Future.wait([
+        _apiClient.get('customer/products/?is_featured=true'),
+        _fetchStoresList(lat, lng, limit),
+        _apiClient.get('customer/categories/'),
+      ]);
+
+      // 1. Process Featured Products
+      final featuredResponse = results[0];
+      if (featuredResponse.statusCode == 200) {
+        final List data = featuredResponse.data;
         _featuredProducts = data.map((json) => ProductModel.fromJson(json)).toList();
         _prefetchImages(_featuredProducts.map((p) => p.image).whereType<String>().toList());
         _cacheData('cached_featured_products', _featuredProducts);
       }
       _isFeaturedLoading = false;
-      _checkOverallLoading();
-      notifyListeners();
-    }).catchError((e) {
-      _isFeaturedLoading = false;
-      _checkOverallLoading();
-      notifyListeners();
-    });
 
-    // 2. Fetch Stores
+      // 2. Process Stores (Note: results[1] is the response from _fetchStoresList)
+      // Actually _fetchStoresList returns Response
+      final storesResponse = results[1];
+      if (storesResponse.statusCode == 200) {
+        final List data = storesResponse.data;
+        _popularStores = data.map((json) => StoreModel.fromJson(json)).toList();
+        _prefetchImages(_popularStores.map((s) => s.logo).whereType<String>().toList());
+        _cacheData('cached_popular_stores', _popularStores);
+      }
+      _isStoresLoading = false;
+
+      // 3. Process Categories
+      final categoriesResponse = results[2];
+      if (categoriesResponse.statusCode == 200) {
+        final List data = categoriesResponse.data;
+        _categories = data.map((json) => CategoryModel.fromJson(json)).toList();
+        _cacheData('cached_categories', _categories);
+      }
+      _isCategoriesLoading = false;
+
+    } catch (e) {
+      debugPrint("Home Data Fetch Error: $e");
+      _error = "Failed to update home data. Check your connection.";
+      _isFeaturedLoading = false;
+      _isStoresLoading = false;
+      _isCategoriesLoading = false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<Response> _fetchStoresList(double? lat, double? lng, int? limit) async {
     String storesPath = 'customer/stores/';
     List<String> queryParams = [];
     if (lat != null && lng != null) {
@@ -160,45 +194,9 @@ class ProductProvider with ChangeNotifier {
     if (queryParams.isNotEmpty) {
       storesPath += "?${queryParams.join('&')}";
     }
-
-    _apiClient.get(storesPath).then((response) {
-      if (response.statusCode == 200) {
-        final List data = response.data;
-        _popularStores = data.map((json) => StoreModel.fromJson(json)).toList();
-        _prefetchImages(_popularStores.map((s) => s.logo).whereType<String>().toList());
-        _cacheData('cached_popular_stores', _popularStores);
-      }
-      _isStoresLoading = false;
-      _checkOverallLoading();
-      notifyListeners();
-    }).catchError((e) {
-      _isStoresLoading = false;
-      _checkOverallLoading();
-      notifyListeners();
-    });
-
-    // 3. Fetch Categories
-    _apiClient.get('customer/categories/').then((response) {
-      if (response.statusCode == 200) {
-        final List data = response.data;
-        _categories = data.map((json) => CategoryModel.fromJson(json)).toList();
-        _cacheData('cached_categories', _categories);
-      }
-      _isCategoriesLoading = false;
-      _checkOverallLoading();
-      notifyListeners();
-    }).catchError((e) {
-      _isCategoriesLoading = false;
-      _checkOverallLoading();
-      notifyListeners();
-    });
+    return await _apiClient.get(storesPath);
   }
 
-  void _checkOverallLoading() {
-    if (!_isFeaturedLoading && !_isStoresLoading && !_isCategoriesLoading) {
-      _isLoading = false;
-    }
-  }
 
   void _prefetchImages(List<String> urls) {
     if (_context == null) return;

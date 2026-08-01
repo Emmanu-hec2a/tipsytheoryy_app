@@ -19,7 +19,10 @@ class OrdersScreen extends StatefulWidget {
   State<OrdersScreen> createState() => _OrdersScreenState();
 }
 
-class _OrdersScreenState extends State<OrdersScreen> {
+class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
   String _selectedFilter = 'All';
 
   @override
@@ -32,6 +35,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final orderProvider = Provider.of<OrderProvider>(context);
     final orders = orderProvider.getFilteredOrders(_selectedFilter);
 
@@ -271,7 +275,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
       decoration: BoxDecoration(
         color: isDark ? Theme.of(context).cardColor : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: isDark ? Border.all(color: Colors.white10) : null,
         boxShadow: isDark ? [] : [
           BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 6))
         ],

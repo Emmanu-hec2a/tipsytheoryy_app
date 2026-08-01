@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
 import '../../core/theme.dart';
+import '../../core/legal_texts.dart';
 import '../../providers/rider_provider.dart';
+import '../customer/legal_content_screen.dart';
 import 'payout_history_screen.dart';
 
 class SupportCenterScreen extends StatefulWidget {
@@ -138,10 +140,79 @@ class _SupportCenterScreenState extends State<SupportCenterScreen> {
       childAspectRatio: 1.4,
       children: [
         _buildHelpTile(Icons.chat_bubble_rounded, 'Live Chat', 'Talk to Concierge', Colors.blue, () => _launchWhatsApp()),
-        _buildHelpTile(Icons.help_center_rounded, 'FAQs', 'Read Guidebook', Colors.purple, () {}),
-        _buildHelpTile(Icons.report_problem_rounded, 'Report Issue', 'Store/Customer', Colors.orange, () {}),
-        _buildHelpTile(Icons.phone_in_talk_rounded, 'Hotline', 'Direct Call', Colors.green, () => launchUrl(Uri.parse('tel:+254700000000'))),
+        _buildHelpTile(Icons.help_center_rounded, 'FAQs', 'Read Guidebook', Colors.purple, () => _viewGuidebook()),
+        _buildHelpTile(Icons.report_problem_rounded, 'Report Issue', 'Store/Customer', Colors.orange, () => _showReportModal()),
+        _buildHelpTile(Icons.phone_in_talk_rounded, 'Hotline', 'Direct Call', Colors.green, () => launchUrl(Uri.parse('tel:+254718258821'))),
       ],
+    );
+  }
+
+  void _viewGuidebook() {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => LegalContentScreen(
+      title: 'Rider Guidebook',
+      content: LegalTexts.riderAgreement, // Reusing agreement for now as guidebook
+    )));
+  }
+
+  void _showReportModal() {
+    final controller = TextEditingController();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 40),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Report an Issue', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: isDark ? Colors.white : AppTheme.primaryColor)),
+            const SizedBox(height: 8),
+            const Text('Your report will be sent directly to the SuperAdmin group for review.', style: TextStyle(color: Colors.grey, fontSize: 13)),
+            const SizedBox(height: 20),
+            TextField(
+              controller: controller,
+              maxLines: 4,
+              style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+              decoration: InputDecoration(
+                hintText: 'Describe the issue (e.g., Merchant is closed, GPS is wrong...)',
+                filled: true,
+                fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: () async {
+                  if (controller.text.trim().isEmpty) return;
+                  Navigator.pop(context);
+                  
+                  final provider = Provider.of<RiderProvider>(context, listen: false);
+                  final success = await provider.reportIssue(controller.text);
+                  
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(success ? 'Report sent to SuperAdmin! 🥂' : 'Failed to send report. Please call support.'),
+                        backgroundColor: success ? AppTheme.primaryColor : Colors.red,
+                      ),
+                    );
+                  }
+                },
+                child: const Text('SUBMIT REPORT'),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -207,7 +278,7 @@ class _SupportCenterScreenState extends State<SupportCenterScreen> {
   }
 
   void _launchWhatsApp() async {
-    const phone = "+254700000000";
+    const phone = "+254718258821";
     final url = Uri.parse("https://wa.me/$phone?text=Rider Support Request");
     if (await canLaunchUrl(url)) await launchUrl(url);
   }

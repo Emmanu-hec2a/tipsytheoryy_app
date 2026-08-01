@@ -13,7 +13,9 @@ class AvailableOrdersScreen extends StatefulWidget {
   State<AvailableOrdersScreen> createState() => _AvailableOrdersScreenState();
 }
 
-class _AvailableOrdersScreenState extends State<AvailableOrdersScreen> {
+class _AvailableOrdersScreenState extends State<AvailableOrdersScreen> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
   @override
   void initState() {
     super.initState();
@@ -24,6 +26,7 @@ class _AvailableOrdersScreenState extends State<AvailableOrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final riderProvider = Provider.of<RiderProvider>(context);
     final isOnline = riderProvider.isOnline;
     final availableOrders = riderProvider.orderQueue.where((o) => o.status.toLowerCase() == 'pending').toList();

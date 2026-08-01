@@ -58,7 +58,7 @@ class _PayoutHistoryScreenState extends State<PayoutHistoryScreen> {
   Widget _buildPayoutCard(dynamic stat, RiderProvider provider, bool isDark) {
     final status = stat['status'].toString().toLowerCase();
     final Color statusColor = status == 'paid' ? Colors.green : (status == 'disputed' ? Colors.red : Colors.orange);
-    final String weekStr = DateFormat('MMM dd').format(DateTime.parse(stat['week_start']));
+    final String weekStr = DateFormat('MMM dd').format(DateTime.parse(stat['week_start']).toLocal());
     
     return Container(
       margin: const EdgeInsets.only(bottom: 16),

@@ -78,7 +78,6 @@ class SupportLegalScreen extends StatelessWidget {
           decoration: BoxDecoration(
             color: isDark ? Theme.of(context).cardColor : Colors.white,
             borderRadius: BorderRadius.circular(24),
-            border: isDark ? Border.all(color: Colors.white10) : null,
           ),
           child: Column(children: items),
         ),

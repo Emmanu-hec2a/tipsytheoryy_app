@@ -166,17 +166,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       final orderId = orderResponse.data['id'];
       final orderNumber = orderResponse.data['order_number'] ?? '#$orderId';
 
-      // Clear cart before navigating to prevent double-orders if they go back
-      cart.clearCart();
-
       if (_selectedPaymentMethod == 'mpesa' && totalAmount > 0) {
         final checkoutRequestId = orderResponse.data['checkout_request_id'];
+        final isAsync = orderResponse.data['is_async'] == true;
         final mpesaError = orderResponse.data['mpesa_error'];
 
-        if (checkoutRequestId == null) {
-          // 🚨 STK Push failed on backend
+        if (checkoutRequestId == null && !isAsync) {
+          // 🚨 STK Push failed on backend (sync mode)
           throw Exception(mpesaError ?? 'M-Pesa STK Push could not be initiated. Please check your number or try again.');
         }
+
+        // Clear cart now that we are navigating away
+        cart.clearCart();
         
         if (mounted) {
           Navigator.of(context, rootNavigator: true).pushReplacement(
@@ -191,6 +192,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         }
         return;
       }
+
+      // Final fallback: normal order confirmation
+      cart.clearCart();
 
       if (mounted) {
         Navigator.pushReplacement(
@@ -313,7 +317,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               decoration: BoxDecoration(
                 color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
               ),
               child: Row(
                 children: [
@@ -463,7 +466,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       decoration: BoxDecoration(
         color: isSelected ? (isDark ? AppTheme.primaryColor : const Color(0xFFE6F2F0)) : Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isSelected ? AppTheme.primaryColor : (isDark ? Colors.white10 : Colors.grey.shade200)),
       ),
       child: Row(
         children: [
@@ -565,7 +567,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: cart.appliedPromoCode != null ? Colors.green : (isDark ? Colors.white10 : Colors.grey.shade200)),
           ),
           child: Column(
             children: [
@@ -645,11 +646,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         ? AppTheme.accentColor.withValues(alpha: isDark ? 0.15 : 0.05)
                         : (isDark ? Colors.white.withValues(alpha: 0.02) : Colors.grey.shade100),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isEligible 
-                          ? AppTheme.accentColor.withValues(alpha: 0.3)
-                          : (isDark ? Colors.white10 : Colors.grey.shade200)
-                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

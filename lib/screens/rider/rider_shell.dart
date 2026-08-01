@@ -92,8 +92,8 @@ class _RiderShellState extends State<RiderShell> {
           setState(() => _selectedIndex = index);
           _pageController.animateToPage(
             index,
-            duration: const Duration(milliseconds: 400),
-            curve: Curves.easeOutQuart,
+            duration: const Duration(milliseconds: 300), // ⚡ Faster transition
+            curve: Curves.fastOutSlowIn, // 🎢 Smoother curve
           );
         },
         items: [

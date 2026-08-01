@@ -13,7 +13,9 @@ class RiderEarningsScreen extends StatefulWidget {
   State<RiderEarningsScreen> createState() => _RiderEarningsScreenState();
 }
 
-class _RiderEarningsScreenState extends State<RiderEarningsScreen> {
+class _RiderEarningsScreenState extends State<RiderEarningsScreen> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
   @override
   void initState() {
     super.initState();
@@ -24,6 +26,7 @@ class _RiderEarningsScreenState extends State<RiderEarningsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final riderProvider = Provider.of<RiderProvider>(context);
     final summary = riderProvider.earningsSummary;
     final isDark = Theme.of(context).brightness == Brightness.dark;

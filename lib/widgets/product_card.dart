@@ -33,7 +33,6 @@ class ProductCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: isDark ? Theme.of(context).cardColor : Colors.white,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade100),
             boxShadow: isDark ? [] : [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.02),

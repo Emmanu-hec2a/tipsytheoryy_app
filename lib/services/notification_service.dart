@@ -2,6 +2,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'dart:math';
+import 'dart:async';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../core/api_client.dart';
 
@@ -13,6 +14,14 @@ class NotificationService {
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
   final ApiClient _apiClient = ApiClient();
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  
+  // Task 3: Stream for screens to listen to specific notifications
+  final StreamController<RemoteMessage> _messageStreamController = StreamController<RemoteMessage>.broadcast();
+  Stream<RemoteMessage> get onMessageReceived => _messageStreamController.stream;
+
+  // Stream for when a notification is tapped (deep linking)
+  final StreamController<RemoteMessage> _tapStreamController = StreamController<RemoteMessage>.broadcast();
+  Stream<RemoteMessage> get onNotificationTap => _tapStreamController.stream;
 
   // Android Notification Channel
   static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
@@ -81,6 +90,7 @@ class NotificationService {
     // 5. Handle app opened from notification
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       debugPrint('App opened via notification: ${message.data}');
+      _tapStreamController.add(message);
     });
 
     // 6. Handle token refresh
@@ -120,6 +130,7 @@ class NotificationService {
     }
     
     // 2. Trigger any specific UI refreshes or logic here
+    _messageStreamController.add(message);
     debugPrint('Foreground notification displayed: ${notification?.title}');
   }
 

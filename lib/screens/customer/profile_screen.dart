@@ -24,7 +24,10 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
   @override
   void initState() {
     super.initState();
@@ -49,6 +52,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // 🛡️ Required for AutomaticKeepAliveClientMixin
     final userProvider = Provider.of<UserProvider>(context);
     final authProvider = Provider.of<AuthProvider>(context);
     final user = userProvider.user;

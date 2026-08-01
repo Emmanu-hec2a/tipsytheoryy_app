@@ -31,7 +31,7 @@ class StoreCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(24),
           border: store.isPro 
             ? Border.all(color: const Color(0xFFC5A059).withValues(alpha: isDark ? 0.5 : 0.3), width: 1.5) 
-            : (isDark ? Border.all(color: Colors.white10) : null),
+            : null,
           boxShadow: isDark ? [] : [
             BoxShadow(
               color: store.isPro 

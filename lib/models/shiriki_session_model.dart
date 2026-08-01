@@ -36,8 +36,8 @@ class ShirikiSessionModel {
       contributions: (json['contributions'] as List)
           .map((i) => ShirikiContributionModel.fromJson(i))
           .toList(),
-      createdAt: DateTime.parse(json['created_at']),
-      expiresAt: DateTime.parse(json['expires_at']),
+      createdAt: DateTime.parse(json['created_at']).toLocal(),
+      expiresAt: DateTime.parse(json['expires_at']).toLocal(),
       orderDetails: json['order_details'],
     );
   }
@@ -48,29 +48,35 @@ class ShirikiSessionModel {
 
 class ShirikiContributionModel {
   final int id;
+  final int userId;
   final String username;
   final double amount;
   final String status;
   final DateTime? paidAt;
   final DateTime createdAt;
+  final double walletCreditAmount;
 
   ShirikiContributionModel({
     required this.id,
+    required this.userId,
     required this.username,
     required this.amount,
     required this.status,
     this.paidAt,
     required this.createdAt,
+    this.walletCreditAmount = 0.0,
   });
 
   factory ShirikiContributionModel.fromJson(Map<String, dynamic> json) {
     return ShirikiContributionModel(
       id: json['id'],
+      userId: json['user_id'] ?? 0,
       username: json['username'],
       amount: double.tryParse(json['amount'].toString()) ?? 0.0,
       status: json['status'],
-      paidAt: json['paid_at'] != null ? DateTime.parse(json['paid_at']) : null,
-      createdAt: DateTime.parse(json['created_at']),
+      paidAt: json['paid_at'] != null ? DateTime.parse(json['paid_at']).toLocal() : null,
+      createdAt: DateTime.parse(json['created_at']).toLocal(),
+      walletCreditAmount: double.tryParse(json['wallet_credit_amount']?.toString() ?? '0') ?? 0.0,
     );
   }
 }
