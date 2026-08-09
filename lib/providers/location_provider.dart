@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:location/location.dart' as loc;
 import 'package:geocoding/geocoding.dart';
+import 'dart:async';
 import '../core/api_client.dart';
 import '../models/address_model.dart';
 
@@ -14,6 +15,9 @@ class LocationProvider with ChangeNotifier {
   AddressModel? _currentAddress;
   bool _isLoading = false;
   String? _error;
+
+  final StreamController<AddressModel> _locationChangedController = StreamController<AddressModel>.broadcast();
+  Stream<AddressModel> get onLocationChanged => _locationChangedController.stream;
 
   List<AddressModel> get savedAddresses => _savedAddresses;
   AddressModel? get currentAddress => _currentAddress;
@@ -132,6 +136,7 @@ class LocationProvider with ChangeNotifier {
       if (response.statusCode == 201) {
         final newAddress = AddressModel.fromJson(response.data);
         _currentAddress = newAddress;
+        _locationChangedController.add(newAddress);
         await fetchAddresses();
       }
     } catch (e) {
@@ -152,6 +157,7 @@ class LocationProvider with ChangeNotifier {
       return a.copyWith(isDefault: a.id == address.id);
     }).toList();
     
+    _locationChangedController.add(address);
     notifyListeners();
     
     try {

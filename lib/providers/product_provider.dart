@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'dart:async';
 import '../core/api_client.dart';
 import '../models/product_model.dart';
 import '../models/store_model.dart';
@@ -29,8 +30,24 @@ class ProductProvider with ChangeNotifier {
   bool _isProOnly = false;
   String? _error;
 
+  StreamSubscription? _locationSubscription;
+
   void updateContext(BuildContext context) {
     _context = context;
+  }
+
+  void listenToLocationChanges(dynamic locProvider) {
+    _locationSubscription?.cancel();
+    _locationSubscription = locProvider.onLocationChanged.listen((address) {
+      debugPrint("🛰️ Store Sync: Location changed to ${address.name}. Re-fetching stores...");
+      fetchHomeData(lat: address.latitude, lng: address.longitude, limit: 10);
+    });
+  }
+
+  @override
+  void dispose() {
+    _locationSubscription?.cancel();
+    super.dispose();
   }
 
   List<ProductModel> get featuredProducts => _featuredProducts;

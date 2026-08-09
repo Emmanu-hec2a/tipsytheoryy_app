@@ -43,6 +43,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> with AutomaticK
     final prodProvider = Provider.of<ProductProvider>(context, listen: false);
     
     prodProvider.updateContext(context);
+    prodProvider.listenToLocationChanges(locProvider);
     
     // 📦 Load cached data first for instant offline access
     await prodProvider.loadCachedHomeData();
