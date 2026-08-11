@@ -10,6 +10,7 @@
         android:label="TipsyTheoryy"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:enableOnBackInvokedCallback="true">
         <activity
             android:name=".MainActivity"
@@ -40,7 +41,7 @@
             android:value="2" />
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyAMaTGu9r9qQUnqPVHKDgdDHX6dvu0p5lM"/>
+            android:value="${MAPS_API_KEY}"/>
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="high_importance_channel" />

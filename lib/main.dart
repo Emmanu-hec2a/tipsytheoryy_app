@@ -30,7 +30,21 @@ void main() async {
   
   try {
     await dotenv.load(fileName: ".env");
-    await Firebase.initializeApp();
+
+    // 🛡️ SECURITY: Manual Firebase Initialization
+    // We initialize Firebase with explicit options in code.
+    // This allows us to disable the 'google-services' Gradle plugin, 
+    // which prevents sensitive keys from leaking into 'resources.arsc' as plain text.
+    await Firebase.initializeApp(
+      options: FirebaseOptions(
+        apiKey: dotenv.env['FIREBASE_API_KEY'] ?? '',
+        appId: dotenv.env['FIREBASE_APP_ID'] ?? '',
+        messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID'] ?? '',
+        projectId: dotenv.env['FIREBASE_PROJECT_ID'] ?? '',
+        storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET'] ?? '',
+      ),
+    );
+
     await NotificationService().initialize();
   } catch (e) {
     debugPrint('Firebase initialization failed: $e');

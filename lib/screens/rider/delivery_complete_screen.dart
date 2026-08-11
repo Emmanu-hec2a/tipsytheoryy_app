@@ -16,8 +16,10 @@ class _DeliveryCompleteScreenState extends State<DeliveryCompleteScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<RiderProvider>(context, listen: false).fetchRiderData();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final riderProvider = Provider.of<RiderProvider>(context, listen: false);
+      // 🔥 Hard Refresh: Load everything fresh including earnings and profile (trip count)
+      await riderProvider.fetchRiderData();
     });
   }
 

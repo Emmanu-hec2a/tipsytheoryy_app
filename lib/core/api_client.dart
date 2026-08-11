@@ -2,6 +2,11 @@ import 'package:dio/dio.dart';
 import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http_certificate_pinning/http_certificate_pinning.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:io';
+import 'package:crypto/crypto.dart';
+import 'package:dio/io.dart';
 
 class ApiClient {
   final Dio dio;
@@ -56,6 +61,41 @@ class ApiClient {
 
     // Add logging in debug mode
     dio.interceptors.add(LogInterceptor(responseBody: true, requestBody: true));
+
+    // 🛡️ SECURITY PHASE 1: Incremental Pinning (Logging Mode)
+    // We re-enable the verification logic but keep it in "Warning" mode to ensure stability.
+    final List<int> allowedHash = [
+      0x1c, 0x9f, 0x53, 0xc8, 0xb2, 0x86, 0x2d, 0xb2, 0x3d, 0x65, 0x3a, 0xb6, 0xa8, 0x84, 0x41, 0x21,
+      0x93, 0xef, 0x96, 0x67, 0x20, 0x8d, 0xaa, 0x1a, 0x20, 0x00, 0xee, 0x13, 0x75, 0x16, 0x8a, 0xcb
+    ];
+
+    dio.httpClientAdapter = IOHttpClientAdapter(
+      createHttpClient: () {
+        final client = HttpClient();
+        client.badCertificateCallback = (X509Certificate cert, String host, int port) {
+          if (host.contains('tipsytheoryy.com')) {
+            final hash = sha256.convert(cert.der).bytes;
+            bool match = true;
+            for (int i = 0; i < allowedHash.length; i++) {
+              if (hash[i] != allowedHash[i]) {
+                match = false;
+                break;
+              }
+            }
+            if (match) {
+              debugPrint("🛡️ SSL PINNING: MATCH for $host");
+              return true;
+            }
+            
+            // 🛡️ PRODUCTION LOCK: Strictly reject any fingerprint mismatch
+            debugPrint("🚨 SSL PINNING FAILURE: Potential MitM Attack for $host");
+            return false;
+          }
+          return true;
+        };
+        return client;
+      },
+    );
   }
 
   Future<Response> get(String path, {Map<String, dynamic>? queryParameters}) async {

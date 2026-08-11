@@ -299,7 +299,13 @@ class RiderProvider with ChangeNotifier {
 
       final response = await _apiClient.patch('rider/orders/$orderId/status/', data: data);
       if (response.statusCode == 200) {
-        await _pollData();
+        // 🔥 Real-time Sync: After delivery, we MUST refresh full rider data 
+        // to update earnings and total delivery counts immediately.
+        if (newStatus == 'delivered') {
+          await fetchRiderData();
+        } else {
+          await _pollData();
+        }
         return true;
       }
     } catch (e) {

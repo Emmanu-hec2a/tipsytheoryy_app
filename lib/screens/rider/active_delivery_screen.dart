@@ -325,7 +325,7 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> with Automa
             Polyline(
               polylineId: const PolylineId('route'),
               points: _polylinePoints,
-              color: AppTheme.primaryColor,
+              color: isDark ? AppTheme.accentColor : AppTheme.primaryColor,
               width: 5,
               jointType: JointType.round,
               startCap: Cap.roundCap,
