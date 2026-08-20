@@ -1,4 +1,8 @@
-# TipsyTheoryy App (Flutter)
+# TipsyTheoryy App
+
+![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)
+![Dart](https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)
 
 TipsyTheoryy is a Flutter mobile application for discovering stores/products, viewing active offers, and placing orders. The app uses a network API client with auth support, caching, and platform services like location and notifications.
 
