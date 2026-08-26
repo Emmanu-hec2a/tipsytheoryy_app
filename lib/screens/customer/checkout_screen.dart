@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../core/theme.dart';
@@ -11,6 +12,9 @@ import 'order_tracking_screen.dart';
 import 'age_verification_screen.dart';
 import 'shiriki_lobby_screen.dart';
 import '../../providers/shiriki_provider.dart';
+
+String _newPaymentKey() =>
+    '${DateTime.now().microsecondsSinceEpoch}-${Random().nextInt(1 << 32)}';
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
@@ -41,7 +45,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   void _fetchAvailablePromos() {
     final cart = Provider.of<CartProvider>(context, listen: false);
     if (cart.activeStoreId != null) {
-      Provider.of<PromotionProvider>(context, listen: false).fetchPromotions(cart.activeStoreId!);
+      Provider.of<PromotionProvider>(
+        context,
+        listen: false,
+      ).fetchPromotions(cart.activeStoreId!);
     }
   }
 
@@ -86,22 +93,26 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         permission = await Geolocator.requestPermission();
       }
 
-      if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
+      if (permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always) {
         _currentPosition = await Geolocator.getCurrentPosition();
-        
-        final response = await _apiClient.post('geocode/reverse/', data: {
-          'latitude': _currentPosition!.latitude,
-          'longitude': _currentPosition!.longitude,
-        });
+
+        final response = await _apiClient.post(
+          'geocode/reverse/',
+          data: {
+            'latitude': _currentPosition!.latitude,
+            'longitude': _currentPosition!.longitude,
+          },
+        );
 
         if (response.statusCode == 200) {
           final address = response.data['address'];
           setState(() => _capturedAddress = address);
           // Cache it in the provider
           userProvider.cacheLocation(
-            address, 
-            _currentPosition!.latitude, 
-            _currentPosition!.longitude
+            address,
+            _currentPosition!.latitude,
+            _currentPosition!.longitude,
           );
         }
       }
@@ -116,25 +127,40 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final cart = Provider.of<CartProvider>(context, listen: false);
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     setState(() => _isLoading = true);
+    final idempotencyKey = _newPaymentKey();
 
     try {
-      final double totalAmount = _useWallet 
-          ? (cart.total - userProvider.user!.walletBalance).clamp(0, double.infinity) 
+      final double totalAmount = _useWallet
+          ? (cart.total - userProvider.user!.walletBalance).clamp(
+              0,
+              double.infinity,
+            )
           : cart.total;
 
-      final orderResponse = await _apiClient.post('customer/orders/create/', data: {
-        'items': cart.items.map((it) => {'product_id': it.product.id, 'quantity': it.quantity}).toList(),
-        'latitude': _currentPosition?.latitude,
-        'longitude': _currentPosition?.longitude,
-        'address_string': _capturedAddress,
-        'payment_method': _selectedPaymentMethod,
-        'mpesa_phone': _selectedPaymentMethod == 'mpesa' ? _mpesaPhoneController.text.trim() : null,
-        'use_wallet': _useWallet,
-        'promo_code': cart.appliedPromoCode,
-        // 🚨 REMOVED: 'total': cart.total, - Backend should calculate its own source of truth
-      });
+      final orderResponse = await _apiClient.post(
+        'customer/orders/create/',
+        idempotencyKey: idempotencyKey,
+        data: {
+          'items': cart.items
+              .map(
+                (it) => {'product_id': it.product.id, 'quantity': it.quantity},
+              )
+              .toList(),
+          'latitude': _currentPosition?.latitude,
+          'longitude': _currentPosition?.longitude,
+          'address_string': _capturedAddress,
+          'payment_method': _selectedPaymentMethod,
+          'mpesa_phone': _selectedPaymentMethod == 'mpesa'
+              ? _mpesaPhoneController.text.trim()
+              : null,
+          'use_wallet': _useWallet,
+          'promo_code': cart.appliedPromoCode,
+          // 🚨 REMOVED: 'total': cart.total, - Backend should calculate its own source of truth
+        },
+      );
 
-      if (orderResponse.statusCode == 403 && orderResponse.data['error'] == 'age_verification_required') {
+      if (orderResponse.statusCode == 403 &&
+          orderResponse.data['error'] == 'age_verification_required') {
         setState(() => _isLoading = false);
         if (mounted) {
           showModalBottomSheet(
@@ -145,7 +171,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               height: MediaQuery.of(context).size.height * 0.85,
               decoration: BoxDecoration(
                 color: Theme.of(context).scaffoldBackgroundColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(30),
+                ),
               ),
               child: AgeVerificationScreen(
                 onVerified: () {
@@ -159,8 +187,39 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         return;
       }
 
-      if (orderResponse.statusCode != 201) {
-        throw Exception(orderResponse.data['error'] ?? 'Order could not be created');
+      if (orderResponse.statusCode == 409 &&
+          orderResponse.data['payment_id'] != null) {
+        setState(() => _isLoading = false);
+        final checkoutId = orderResponse.data['checkout_request_id'];
+        final paymentId = orderResponse.data['payment_id'];
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'A payment is already in progress. Please check your M-Pesa prompt.',
+              ),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          cart.clearCart();
+          Navigator.of(context, rootNavigator: true).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => PaymentPendingScreen(
+                orderId: orderResponse.data['order_id'] ?? -1,
+                orderNumber: orderResponse.data['order_number'] ?? 'Pending',
+                paymentId: paymentId,
+                checkoutRequestId: checkoutId,
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
+      if (orderResponse.statusCode != 201 && orderResponse.statusCode != 200) {
+        throw Exception(
+          orderResponse.data['error'] ?? 'Order could not be created',
+        );
       }
 
       final orderId = orderResponse.data['id'];
@@ -168,23 +227,28 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       if (_selectedPaymentMethod == 'mpesa' && totalAmount > 0) {
         final checkoutRequestId = orderResponse.data['checkout_request_id'];
+        final paymentId = orderResponse.data['payment_id'];
         final isAsync = orderResponse.data['is_async'] == true;
         final mpesaError = orderResponse.data['mpesa_error'];
 
-        if (checkoutRequestId == null && !isAsync) {
+        if (paymentId == null && !isAsync) {
           // 🚨 STK Push failed on backend (sync mode)
-          throw Exception(mpesaError ?? 'M-Pesa STK Push could not be initiated. Please check your number or try again.');
+          throw Exception(
+            mpesaError ??
+                'M-Pesa STK Push could not be initiated. Please check your number or try again.',
+          );
         }
 
         // Clear cart now that we are navigating away
         cart.clearCart();
-        
+
         if (mounted) {
           Navigator.of(context, rootNavigator: true).pushReplacement(
             MaterialPageRoute(
               builder: (_) => PaymentPendingScreen(
                 orderId: orderId,
                 orderNumber: orderNumber,
+                paymentId: paymentId,
                 checkoutRequestId: checkoutRequestId,
               ),
             ),
@@ -199,12 +263,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => OrderTrackingScreen(orderId: orderId)),
+          MaterialPageRoute(
+            builder: (_) => OrderTrackingScreen(orderId: orderId),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       if (mounted) {
@@ -215,21 +283,34 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Future<void> _initiateShiriki() async {
     final cart = Provider.of<CartProvider>(context, listen: false);
-    final shirikiProvider = Provider.of<ShirikiProvider>(context, listen: false);
+    final shirikiProvider = Provider.of<ShirikiProvider>(
+      context,
+      listen: false,
+    );
     setState(() => _isLoading = true);
+    final idempotencyKey = _newPaymentKey();
 
     try {
       // 1. Create Order with is_shiriki flag
-      final orderResponse = await _apiClient.post('customer/orders/create/', data: {
-        'items': cart.items.map((it) => {'product_id': it.product.id, 'quantity': it.quantity}).toList(),
-        'latitude': _currentPosition?.latitude,
-        'longitude': _currentPosition?.longitude,
-        'address_string': _capturedAddress,
-        'payment_method': 'mpesa',
-        'is_shiriki': true,
-      });
+      final orderResponse = await _apiClient.post(
+        'customer/orders/create/',
+        idempotencyKey: idempotencyKey,
+        data: {
+          'items': cart.items
+              .map(
+                (it) => {'product_id': it.product.id, 'quantity': it.quantity},
+              )
+              .toList(),
+          'latitude': _currentPosition?.latitude,
+          'longitude': _currentPosition?.longitude,
+          'address_string': _capturedAddress,
+          'payment_method': 'mpesa',
+          'is_shiriki': true,
+        },
+      );
 
-      if (orderResponse.statusCode == 403 && orderResponse.data['error'] == 'age_verification_required') {
+      if (orderResponse.statusCode == 403 &&
+          orderResponse.data['error'] == 'age_verification_required') {
         setState(() => _isLoading = false);
         if (mounted) {
           showModalBottomSheet(
@@ -240,7 +321,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               height: MediaQuery.of(context).size.height * 0.85,
               decoration: BoxDecoration(
                 color: Theme.of(context).scaffoldBackgroundColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(30),
+                ),
               ),
               child: AgeVerificationScreen(
                 onVerified: () {
@@ -254,8 +337,37 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         return;
       }
 
+      if (orderResponse.statusCode == 409 &&
+          orderResponse.data['error'] == 'payment_in_progress') {
+        setState(() => _isLoading = false);
+        final checkoutId = orderResponse.data['checkout_request_id'];
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'A payment is already in progress. Please check your M-Pesa prompt.',
+              ),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          cart.clearCart();
+          Navigator.of(context, rootNavigator: true).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => PaymentPendingScreen(
+                orderId: -1, // Use -1 or handle by number if ID not returned
+                orderNumber: 'Pending',
+                checkoutRequestId: checkoutId,
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
       if (orderResponse.statusCode != 201) {
-        throw Exception(orderResponse.data['error'] ?? 'Order could not be created');
+        throw Exception(
+          orderResponse.data['error'] ?? 'Order could not be created',
+        );
       }
 
       final orderNumber = orderResponse.data['order_number'];
@@ -267,16 +379,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         cart.clearCart();
         Navigator.of(context, rootNavigator: true).pushReplacement(
           MaterialPageRoute(
-            builder: (_) => ShirikiLobbyScreen(inviteCode: shirikiProvider.currentSession!.inviteCode),
+            builder: (_) => ShirikiLobbyScreen(
+              inviteCode: shirikiProvider.currentSession!.inviteCode,
+            ),
           ),
         );
       } else {
-        throw Exception(shirikiProvider.error ?? 'Failed to create Shiriki session');
+        throw Exception(
+          shirikiProvider.error ?? 'Failed to create Shiriki session',
+        );
       }
-
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       if (mounted) {
@@ -290,7 +407,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final cart = Provider.of<CartProvider>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
-    
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
@@ -300,11 +417,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
           'Checkout',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w900,
+            fontSize: 18,
+          ),
         ),
       ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(20, 20, 20, bottomPadding > 0 ? bottomPadding + 40 : 60), // 🛡️ SYSTEM OVERLAY GUARD
+        padding: EdgeInsets.fromLTRB(
+          20,
+          20,
+          20,
+          bottomPadding > 0 ? bottomPadding + 40 : 60,
+        ), // 🛡️ SYSTEM OVERLAY GUARD
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -324,16 +450,37 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      _capturedAddress ?? (_isLoading ? 'Capturing your location...' : 'Locating you...'),
-                      style: TextStyle(color: _capturedAddress == null ? (isDark ? Colors.white24 : Colors.grey) : (isDark ? Colors.white70 : Colors.black87)),
+                      _capturedAddress ??
+                          (_isLoading
+                              ? 'Capturing your location...'
+                              : 'Locating you...'),
+                      style: TextStyle(
+                        color: _capturedAddress == null
+                            ? (isDark ? Colors.white24 : Colors.grey)
+                            : (isDark ? Colors.white70 : Colors.black87),
+                      ),
                     ),
                   ),
-                  _isLoading 
-                    ? const Padding(
-                        padding: EdgeInsets.all(12.0),
-                        child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.accentColor)),
-                      )
-                    : IconButton(onPressed: _captureLocation, icon: Icon(Icons.refresh, size: 20, color: isDark ? Colors.white38 : Colors.grey)),
+                  _isLoading
+                      ? const Padding(
+                          padding: EdgeInsets.all(12.0),
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppTheme.accentColor,
+                            ),
+                          ),
+                        )
+                      : IconButton(
+                          onPressed: _captureLocation,
+                          icon: Icon(
+                            Icons.refresh,
+                            size: 20,
+                            color: isDark ? Colors.white38 : Colors.grey,
+                          ),
+                        ),
                 ],
               ),
             ),
@@ -342,7 +489,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             const SizedBox(height: 12),
             GestureDetector(
               onTap: () => setState(() => _selectedPaymentMethod = 'mpesa'),
-              child: _buildPaymentOption('M-Pesa STK Push', Icons.phone_android_rounded, _selectedPaymentMethod == 'mpesa'),
+              child: _buildPaymentOption(
+                'M-Pesa STK Push',
+                Icons.phone_android_rounded,
+                _selectedPaymentMethod == 'mpesa',
+              ),
             ),
             if (_selectedPaymentMethod == 'mpesa')
               Padding(
@@ -350,21 +501,42 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 child: TextField(
                   controller: _mpesaPhoneController,
                   keyboardType: TextInputType.phone,
-                  style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black87,
+                    fontWeight: FontWeight.bold,
+                  ),
                   decoration: InputDecoration(
                     labelText: 'M-Pesa Number for STK Push',
                     labelStyle: TextStyle(color: AppTheme.primaryColor),
                     hintText: 'e.g. 0712345678',
-                    prefixIcon: const Icon(Icons.phone, color: AppTheme.primaryColor),
+                    prefixIcon: const Icon(
+                      Icons.phone,
+                      color: AppTheme.primaryColor,
+                    ),
                     filled: true,
-                    fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    fillColor: isDark
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : Colors.grey.shade50,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
                 ),
               ),
             GestureDetector(
               onTap: () => setState(() => _selectedPaymentMethod = 'cod'),
-              child: _buildPaymentOption('Cash on Delivery', Icons.money, _selectedPaymentMethod == 'cod'),
+              child: Opacity(
+                opacity: 0.4,  // Greyed out
+                child: AbsorbPointer(
+                  absorbing: true,  // Disable interaction
+                  child: _buildPaymentOption(
+                    'Cash on Delivery (Coming Soon)',
+                    Icons.money,
+                    false,  // Never selected
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: 30),
             _buildWalletOption(),
@@ -373,14 +545,32 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             const SizedBox(height: 30),
             _buildSection('Order Summary'),
             const SizedBox(height: 12),
-            _buildSummaryRow('Subtotal', 'KSh ${cart.subtotal.toStringAsFixed(0)}'),
-            _buildSummaryRow('Delivery Fee', 'KSh ${cart.deliveryFee.toStringAsFixed(0)}'),
+            _buildSummaryRow(
+              'Subtotal',
+              'KSh ${cart.subtotal.toStringAsFixed(0)}',
+            ),
+            _buildSummaryRow(
+              'Delivery Fee',
+              'KSh ${cart.deliveryFee.toStringAsFixed(0)}',
+            ),
             if (cart.appliedPromoCode != null)
-              _buildSummaryRow('Promo (${cart.appliedPromoCode})', '- KSh ${cart.discountAmount.toStringAsFixed(0)}', isBold: true),
-            if (_useWallet) 
-              _buildSummaryRow('Tipsy Credit', '- KSh ${(Provider.of<UserProvider>(context).user?.walletBalance ?? 0).toStringAsFixed(2)}', isBold: true),
+              _buildSummaryRow(
+                'Promo (${cart.appliedPromoCode})',
+                '- KSh ${cart.discountAmount.toStringAsFixed(0)}',
+                isBold: true,
+              ),
+            if (_useWallet)
+              _buildSummaryRow(
+                'Tipsy Credit',
+                '- KSh ${(Provider.of<UserProvider>(context).user?.walletBalance ?? 0).toStringAsFixed(2)}',
+                isBold: true,
+              ),
             const Divider(height: 24),
-            _buildSummaryRow('Total', 'KSh ${_calculateFinalTotal(cart).toStringAsFixed(0)}', isBold: true),
+            _buildSummaryRow(
+              'Total',
+              'KSh ${_calculateFinalTotal(cart).toStringAsFixed(0)}',
+              isBold: true,
+            ),
             const SizedBox(height: 30),
             if (_selectedPaymentMethod == 'mpesa') ...[
               SizedBox(
@@ -388,12 +578,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 child: OutlinedButton.icon(
                   onPressed: _isLoading ? null : _initiateShiriki,
                   icon: const Icon(Icons.people_alt_rounded),
-                  label: const Text('SHIRIKI SPLIT: PAY WITH FRIENDS', style: TextStyle(fontWeight: FontWeight.w900)),
+                  label: const Text(
+                    'SHIRIKI SPLIT: PAY WITH FRIENDS',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
                   style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: isDark ? AppTheme.accentColor : AppTheme.primaryColor, width: 2),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    side: BorderSide(
+                      color: isDark
+                          ? AppTheme.accentColor
+                          : AppTheme.primaryColor,
+                      width: 2,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    foregroundColor: isDark ? AppTheme.accentColor : AppTheme.primaryColor,
+                    foregroundColor: isDark
+                        ? AppTheme.accentColor
+                        : AppTheme.primaryColor,
                   ),
                 ),
               ),
@@ -406,11 +608,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 onPressed: _isLoading ? null : _placeOrder,
-                child: _isLoading 
-                    ? const CircularProgressIndicator(color: Colors.white) 
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
                     : Text(
                         _selectedPaymentMethod == 'mpesa'
                             ? 'Pay via M-PESA'
@@ -426,28 +630,41 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildSection(String title) {
-    return Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold));
+    return Text(
+      title,
+      style: Theme.of(
+        context,
+      ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+    );
   }
 
   Widget _buildTrustBanner(CartProvider cart) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: const Color(0xFF2DD4BF).withValues(alpha: isDark ? 0.05 : 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF2DD4BF).withValues(alpha: 0.2)),
+        border: Border.all(
+          color: const Color(0xFF2DD4BF).withValues(alpha: 0.2),
+        ),
       ),
       child: Row(
         children: [
-          const Icon(Icons.verified_user_rounded, color: Color(0xFF2DD4BF), size: 20),
+          const Icon(
+            Icons.verified_user_rounded,
+            color: Color(0xFF2DD4BF),
+            size: 20,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               'Ordering from a Pro-Verified Merchant. Quality and speed are guaranteed.',
               style: TextStyle(
-                color: isDark ? const Color(0xFF2DD4BF).withValues(alpha: 0.8) : const Color(0xFF0D3B30),
+                color: isDark
+                    ? const Color(0xFF2DD4BF).withValues(alpha: 0.8)
+                    : const Color(0xFF0D3B30),
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
@@ -464,22 +681,32 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isSelected ? (isDark ? AppTheme.primaryColor : const Color(0xFFE6F2F0)) : Theme.of(context).cardColor,
+        color: isSelected
+            ? (isDark ? AppTheme.primaryColor : const Color(0xFFE6F2F0))
+            : Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          Icon(icon, color: isSelected ? Colors.white : (isDark ? Colors.white38 : Colors.grey)),
+          Icon(
+            icon,
+            color: isSelected
+                ? Colors.white
+                : (isDark ? Colors.white38 : Colors.grey),
+          ),
           const SizedBox(width: 12),
           Text(
-            title, 
+            title,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              color: isSelected ? Colors.white : (isDark ? Colors.white70 : const Color(0xFF1E293B)),
-            )
+              color: isSelected
+                  ? Colors.white
+                  : (isDark ? Colors.white70 : const Color(0xFF1E293B)),
+            ),
           ),
           const Spacer(),
-          if (isSelected) const Icon(Icons.check_circle, color: Colors.white, size: 20),
+          if (isSelected)
+            const Icon(Icons.check_circle, color: Colors.white, size: 20),
         ],
       ),
     );
@@ -492,8 +719,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: isBold ? (isDark ? Colors.white : Colors.black) : (isDark ? Colors.white38 : Colors.grey))),
-          Text(value, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: isBold ? FontWeight.bold : FontWeight.normal, fontSize: isBold ? 16 : 14, color: label.contains('Credit') ? Colors.green : (isDark ? Colors.white : null))),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: isBold
+                  ? (isDark ? Colors.white : Colors.black)
+                  : (isDark ? Colors.white38 : Colors.grey),
+            ),
+          ),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              fontSize: isBold ? 16 : 14,
+              color: label.contains('Credit')
+                  ? Colors.green
+                  : (isDark ? Colors.white : null),
+            ),
+          ),
         ],
       ),
     );
@@ -501,7 +744,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   double _calculateFinalTotal(CartProvider cart) {
     if (!_useWallet) return cart.total;
-    final balance = Provider.of<UserProvider>(context).user?.walletBalance ?? 0.0;
+    final balance =
+        Provider.of<UserProvider>(context).user?.walletBalance ?? 0.0;
     return (cart.total - balance).clamp(0, double.infinity);
   }
 
@@ -509,7 +753,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final userProvider = Provider.of<UserProvider>(context);
     final balance = userProvider.user?.walletBalance ?? 0.0;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     if (balance <= 0) return const SizedBox.shrink();
 
     return Column(
@@ -520,25 +764,48 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: _useWallet ? (isDark ? AppTheme.primaryColor : const Color(0xFFE6F2F0)) : Theme.of(context).cardColor,
+            color: _useWallet
+                ? (isDark ? AppTheme.primaryColor : const Color(0xFFE6F2F0))
+                : Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _useWallet ? AppTheme.primaryColor : (isDark ? Colors.white10 : Colors.grey.shade200)),
+            border: Border.all(
+              color: _useWallet
+                  ? AppTheme.primaryColor
+                  : (isDark ? Colors.white10 : Colors.grey.shade200),
+            ),
           ),
           child: Row(
             children: [
-              const Icon(Icons.account_balance_wallet_rounded, color: Colors.green),
+              const Icon(
+                Icons.account_balance_wallet_rounded,
+                color: Colors.green,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Use Wallet Balance', style: TextStyle(fontWeight: FontWeight.bold, color: _useWallet && isDark ? Colors.white : (isDark ? Colors.white : Colors.black))),
-                    Text('Available: KSh ${balance.toStringAsFixed(2)}', style: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade600, fontSize: 12)),
+                    Text(
+                      'Use Wallet Balance',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: _useWallet && isDark
+                            ? Colors.white
+                            : (isDark ? Colors.white : Colors.black),
+                      ),
+                    ),
+                    Text(
+                      'Available: KSh ${balance.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        color: isDark ? Colors.white38 : Colors.grey.shade600,
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                 ),
               ),
               Switch(
-                value: _useWallet, 
+                value: _useWallet,
                 onChanged: (val) => setState(() => _useWallet = val),
                 activeColor: Colors.white,
                 activeTrackColor: Colors.green,
@@ -560,7 +827,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       children: [
         _buildSection('Promotions & Offers'),
         const SizedBox(height: 12),
-        
+
         // 🎫 Promo Input
         Container(
           padding: const EdgeInsets.all(16),
@@ -576,22 +843,44 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     child: TextField(
                       controller: _promoController,
                       enabled: cart.appliedPromoCode == null,
-                      style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.bold, fontSize: 14),
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black87,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                       decoration: InputDecoration(
                         hintText: 'Enter Promo Code',
-                        hintStyle: TextStyle(color: isDark ? Colors.white24 : Colors.grey),
+                        hintStyle: TextStyle(
+                          color: isDark ? Colors.white24 : Colors.grey,
+                        ),
                         border: InputBorder.none,
-                        prefixIcon: const Icon(Icons.local_offer_outlined, color: AppTheme.primaryColor),
+                        prefixIcon: const Icon(
+                          Icons.local_offer_outlined,
+                          color: AppTheme.primaryColor,
+                        ),
                       ),
                     ),
                   ),
                   if (cart.appliedPromoCode == null)
-                    _isValidatingPromo 
-                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.accentColor))
-                      : TextButton(
-                          onPressed: _applyPromoCode,
-                          child: const Text('APPLY', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.accentColor)),
-                        )
+                    _isValidatingPromo
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppTheme.accentColor,
+                            ),
+                          )
+                        : TextButton(
+                            onPressed: _applyPromoCode,
+                            child: const Text(
+                              'APPLY',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.accentColor,
+                              ),
+                            ),
+                          )
                   else
                     IconButton(
                       icon: const Icon(Icons.cancel, color: Colors.red),
@@ -607,11 +896,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   padding: const EdgeInsets.only(top: 8, left: 12),
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle, color: Colors.green, size: 14),
+                      const Icon(
+                        Icons.check_circle,
+                        color: Colors.green,
+                        size: 14,
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         'Promo Applied: KSh ${cart.discountAmount.toStringAsFixed(0)} saved!',
-                        style: const TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          color: Colors.green,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -631,20 +928,26 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               itemBuilder: (context, index) {
                 final promo = promoProvider.availablePromotions[index];
                 final bool isEligible = cart.subtotal >= promo.minOrderAmount;
-                
+
                 return GestureDetector(
-                  onTap: (cart.appliedPromoCode == null && isEligible) ? () {
-                    _promoController.text = promo.code;
-                    _applyPromoCode();
-                  } : null,
+                  onTap: (cart.appliedPromoCode == null && isEligible)
+                      ? () {
+                          _promoController.text = promo.code;
+                          _applyPromoCode();
+                        }
+                      : null,
                   child: Container(
                     width: 180,
                     margin: const EdgeInsets.only(right: 12),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: isEligible 
-                        ? AppTheme.accentColor.withValues(alpha: isDark ? 0.15 : 0.05)
-                        : (isDark ? Colors.white.withValues(alpha: 0.02) : Colors.grey.shade100),
+                      color: isEligible
+                          ? AppTheme.accentColor.withValues(
+                              alpha: isDark ? 0.15 : 0.05,
+                            )
+                          : (isDark
+                                ? Colors.white.withValues(alpha: 0.02)
+                                : Colors.grey.shade100),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Column(
@@ -654,42 +957,52 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         Row(
                           children: [
                             Expanded(
-                                child: Text(
-                                    promo.title, 
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.bold, 
-                                        fontSize: 11, 
-                                        color: isEligible 
-                                            ? (isDark ? Colors.white : Colors.black87)
-                                            : (isDark ? Colors.white24 : Colors.grey)
-                                    ), 
-                                    maxLines: 1, 
-                                    overflow: TextOverflow.ellipsis
-                                )
+                              child: Text(
+                                promo.title,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11,
+                                  color: isEligible
+                                      ? (isDark ? Colors.white : Colors.black87)
+                                      : (isDark ? Colors.white24 : Colors.grey),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                             if (!isEligible)
-                                const Icon(Icons.lock_outline, size: 10, color: Colors.grey),
+                              const Icon(
+                                Icons.lock_outline,
+                                size: 10,
+                                color: Colors.grey,
+                              ),
                           ],
                         ),
                         const SizedBox(height: 4),
                         Text(
-                            promo.discountPercentage != null 
-                                ? '${promo.discountPercentage?.toStringAsFixed(0)}% OFF'
-                                : 'KSh ${promo.discountAmount?.toStringAsFixed(0)} OFF',
-                            style: TextStyle(
-                                color: isEligible ? AppTheme.accentColor : Colors.grey, 
-                                fontWeight: FontWeight.w900, 
-                                fontSize: 13
-                            )
+                          promo.discountPercentage != null
+                              ? '${promo.discountPercentage?.toStringAsFixed(0)}% OFF'
+                              : 'KSh ${promo.discountAmount?.toStringAsFixed(0)} OFF',
+                          style: TextStyle(
+                            color: isEligible
+                                ? AppTheme.accentColor
+                                : Colors.grey,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 13,
+                          ),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                            isEligible ? 'Use code: ${promo.code}' : 'Min. KSh ${promo.minOrderAmount.toStringAsFixed(0)}',
-                            style: TextStyle(
-                                color: isEligible ? AppTheme.accentColor.withValues(alpha: 0.8) : Colors.redAccent,
-                                fontSize: 9, 
-                                fontWeight: FontWeight.bold
-                            )
+                          isEligible
+                              ? 'Use code: ${promo.code}'
+                              : 'Min. KSh ${promo.minOrderAmount.toStringAsFixed(0)}',
+                          style: TextStyle(
+                            color: isEligible
+                                ? AppTheme.accentColor.withValues(alpha: 0.8)
+                                : Colors.redAccent,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
@@ -708,11 +1021,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (code.isEmpty) return;
 
     final cart = Provider.of<CartProvider>(context, listen: false);
-    final promoProvider = Provider.of<PromotionProvider>(context, listen: false);
+    final promoProvider = Provider.of<PromotionProvider>(
+      context,
+      listen: false,
+    );
 
     setState(() => _isValidatingPromo = true);
 
-    final result = await promoProvider.validatePromo(code, cart.activeStoreId!, cart.subtotal);
+    final result = await promoProvider.validatePromo(
+      code,
+      cart.activeStoreId!,
+      cart.subtotal,
+    );
 
     setState(() => _isValidatingPromo = false);
 
@@ -721,7 +1041,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Promo applied! You saved KSh ${result['discount_amount'].toStringAsFixed(0)}'),
+            content: Text(
+              'Promo applied! You saved KSh ${result['discount_amount'].toStringAsFixed(0)}',
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -729,10 +1051,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['error']),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(result['error']), backgroundColor: Colors.red),
         );
       }
     }
