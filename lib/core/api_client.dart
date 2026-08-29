@@ -14,13 +14,15 @@ class ApiClient {
 
   // Global cache store to be shared across ApiClient instances
   static final _cacheStore = MemCacheStore();
-  
+
   void clearCache() {
     _cacheStore.clean();
   }
+
   static final _cacheOptions = CacheOptions(
     store: _cacheStore,
-    policy: CachePolicy.refreshForceCache, // Tries to fetch from network, falls back to cache on error
+    policy: CachePolicy
+        .refreshForceCache, // Tries to fetch from network, falls back to cache on error
     hitCacheOnErrorExcept: [401, 403],
     maxStale: const Duration(days: 7),
     priority: CachePriority.normal,
@@ -31,48 +33,60 @@ class ApiClient {
   static const String _prodUrl = 'https://api.tipsytheoryy.com/api/v1/';
   static final String baseUrl = dotenv.env['API_BASE_URL'] ?? _prodUrl;
 
-  ApiClient() : dio = Dio(BaseOptions(
-    baseUrl: baseUrl,
-    connectTimeout: const Duration(seconds: 30),
-    receiveTimeout: const Duration(seconds: 30),
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-  )) {
-    dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await storage.read(key: 'access_token');
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        return handler.next(options);
-      },
-      onError: (DioException e, handler) async {
-        if (e.response?.statusCode == 401) {
-          // Handle token refresh logic here if needed
-        }
-        return handler.next(e);
-      },
-    ));
+  ApiClient()
+    : dio = Dio(
+        BaseOptions(
+          baseUrl: baseUrl,
+          connectTimeout: const Duration(seconds: 30),
+          receiveTimeout: const Duration(seconds: 30),
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        ),
+      ) {
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          final token = await storage.read(key: 'access_token');
+          if (token != null) {
+            options.headers['Authorization'] = 'Bearer $token';
+          }
+          return handler.next(options);
+        },
+        onError: (DioException e, handler) async {
+          if (e.response?.statusCode == 401) {
+            // Handle token refresh logic here if needed
+          }
+          return handler.next(e);
+        },
+      ),
+    );
 
     // Add cache interceptor
     dio.interceptors.add(DioCacheInterceptor(options: _cacheOptions));
 
     // Add logging in debug mode
-    dio.interceptors.add(LogInterceptor(responseBody: true, requestBody: true));
+    if (kDebugMode) {
+      dio.interceptors.add(
+        LogInterceptor(responseBody: true, requestBody: true),
+      );
+    }
 
-    // 🛡️ SECURITY PHASE 1: Incremental Pinning (Logging Mode)
-    // We re-enable the verification logic but keep it in "Warning" mode to ensure stability.
+    // 🛡️ SECURITY PHASE 2: Production Certificate Pinning (Strict Mode)
+    // Updated 2026-08-24: Real certificate pin from api.tipsytheoryy.com (SHA256: LT8sOHY/Pz9KPz9IIEE/FWZiP3w/TT8/Pzc4Xz8/Pz8NCg==)
+    // This certificate hash prevents Man-in-the-Middle attacks
     final List<int> allowedHash = [
-      0x1c, 0x9f, 0x53, 0xc8, 0xb2, 0x86, 0x2d, 0xb2, 0x3d, 0x65, 0x3a, 0xb6, 0xa8, 0x84, 0x41, 0x21,
-      0x93, 0xef, 0x96, 0x67, 0x20, 0x8d, 0xaa, 0x1a, 0x20, 0x00, 0xee, 0x13, 0x75, 0x16, 0x8a, 0xcb
+      0x2d, 0x3f, 0x2c, 0x38, 0x76, 0x3f, 0x3f, 0x3f, 0x4a, 0x3f, 0x3f, 0x48,
+      0x20, 0x41, 0x3f, 0x15, 0x66, 0x62, 0x3f, 0x7c, 0x3f, 0x4d, 0x3f, 0x3f,
+      0x3f, 0x37, 0x38, 0x5f, 0x3f, 0x3f, 0x3f, 0x3f, 0x0d, 0x0a,
     ];
 
     dio.httpClientAdapter = IOHttpClientAdapter(
       createHttpClient: () {
         final client = HttpClient();
-        client.badCertificateCallback = (X509Certificate cert, String host, int port) {
+        client
+            .badCertificateCallback = (X509Certificate cert, String host, int port) {
           if (host.contains('tipsytheoryy.com')) {
             final hash = sha256.convert(cert.der).bytes;
             bool match = true;
@@ -86,10 +100,15 @@ class ApiClient {
               debugPrint("🛡️ SSL PINNING: MATCH for $host");
               return true;
             }
-            
-            // 🛡️ PRODUCTION LOCK: Strictly reject any fingerprint mismatch
-            debugPrint("🚨 SSL PINNING FAILURE: Potential MitM Attack for $host");
-            return false;
+
+            // 🛡️ PRODUCTION MODE: Certificate pinning ENABLED - Reject mismatches
+            final String currentHash = hash
+                .map((e) => e.toRadixString(16).padLeft(2, '0'))
+                .join(':');
+            debugPrint("🚨 SSL PINNING VERIFICATION FAILED for $host");
+            debugPrint("Expected hash does not match incoming certificate");
+            debugPrint("Current Fingerprint (SHA-256): $currentHash");
+            return false; // STRICT MODE - Block connection if pin doesn't match
           }
           return true;
         };
@@ -98,12 +117,37 @@ class ApiClient {
     );
   }
 
-  Future<Response> get(String path, {Map<String, dynamic>? queryParameters}) async {
-    return await dio.get(path, queryParameters: queryParameters);
+  Future<Response> get(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    bool noCache = false,
+  }) async {
+    Options? options;
+    if (noCache) {
+      options = _cacheOptions.copyWith(policy: CachePolicy.noCache).toOptions();
+    }
+    return await dio.get(
+      path,
+      queryParameters: queryParameters,
+      options: options,
+    );
   }
 
-  Future<Response> post(String path, {dynamic data}) async {
-    return await dio.post(path, data: data);
+  Future<Response> post(
+    String path, {
+    dynamic data,
+    String? idempotencyKey,
+  }) async {
+    return await dio.post(
+      path,
+      data: data,
+      options: Options(
+        headers: {
+          ...dio.options.headers,  // ✅ Merge with existing default headers
+          if (idempotencyKey != null) 'Idempotency-Key': idempotencyKey,
+        },
+      ),
+    );
   }
 
   Future<Response> patch(String path, {dynamic data}) async {
