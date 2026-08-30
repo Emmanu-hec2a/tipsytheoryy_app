@@ -4,21 +4,24 @@ import 'package:flutter/material.dart';
 
 import '../../core/api_client.dart';
 import '../../core/theme.dart';
-import '../../models/order_model.dart';
 import 'order_tracking_screen.dart';
 import 'payment_result_screen.dart';
 import 'customer_shell.dart';
 import '../../services/notification_service.dart';
+import '../../services/payment_repository.dart';
+import '../../models/payment_attempt_model.dart';
 
 class PaymentPendingScreen extends StatefulWidget {
   final int orderId;
   final String orderNumber;
+  final String? paymentId;
   final String? checkoutRequestId;
 
   const PaymentPendingScreen({
     super.key,
     required this.orderId,
     required this.orderNumber,
+    this.paymentId,
     this.checkoutRequestId,
   });
 
@@ -26,10 +29,13 @@ class PaymentPendingScreen extends StatefulWidget {
   State<PaymentPendingScreen> createState() => _PaymentPendingScreenState();
 }
 
-class _PaymentPendingScreenState extends State<PaymentPendingScreen> with WidgetsBindingObserver {
+class _PaymentPendingScreenState extends State<PaymentPendingScreen>
+    with WidgetsBindingObserver {
   final ApiClient _apiClient = ApiClient();
+  final PaymentRepository _payments = PaymentRepository();
   bool _isChecking = false;
-  String _statusMessage = 'An M-Pesa STK push has been sent to your phone. Please enter your PIN to complete the payment.';
+  String _statusMessage =
+      'An M-Pesa STK push has been sent to your phone. Please enter your PIN to complete the payment.';
   Timer? _pollTimer;
   StreamSubscription? _fcmSubscription;
 
@@ -37,17 +43,33 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen> with Widget
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    if (widget.paymentId != null) {
+      _payments.saveActive(
+        PaymentAttemptModel(
+          paymentId: widget.paymentId!,
+          status: 'pending',
+          checkoutRequestId: widget.checkoutRequestId,
+          orderId: widget.orderId,
+          orderNumber: widget.orderNumber,
+          amount: 0,
+        ),
+      );
+    }
     _startPolling();
 
     // 🛡️ Task: Listen for phone format errors or progress
-    _fcmSubscription = NotificationService().onMessageReceived.listen((message) {
+    _fcmSubscription = NotificationService().onMessageReceived.listen((
+      message,
+    ) {
       final type = message.data['type'];
       if (type == 'phone_format_error') {
         _pollTimer?.cancel();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text("Invalid phone number. Please check the format and try again."),
+              content: Text(
+                "Invalid phone number. Please check the format and try again.",
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -75,10 +97,8 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen> with Widget
   }
 
   void _startPolling() {
-    _checkPaymentStatus();
-    _pollTimer = Timer.periodic(const Duration(seconds: 4), (_) {
-      _checkPaymentStatus();
-    });
+    // 🛡️ Task: 2s initial delay before first poll to allow DB write
+    _pollTimer = Timer(const Duration(seconds: 2), _checkPaymentStatus);
   }
 
   Future<void> _checkPaymentStatus() async {
@@ -87,50 +107,82 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen> with Widget
     setState(() => _isChecking = true);
 
     try {
-      final response = await _apiClient.get('customer/orders/${widget.orderId}/payment-status/');
-      if (response.statusCode == 200) {
-        final paymentStatus = response.data['payment_status'];
-        if (paymentStatus == 'paid') {
-          _pollTimer?.cancel();
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => OrderTrackingScreen(orderId: widget.orderId)),
-            );
-          }
-          return;
+      final active = widget.paymentId == null
+          ? await _payments.loadActive()
+          : null;
+      final id = widget.paymentId ?? active?.paymentId;
+      if (id == null || id.isEmpty)
+        throw Exception('Payment reference unavailable');
+      // ✅ Pass orderId to fetch correct endpoint
+      final payment = await _payments.fetch(id, orderId: widget.orderId);
+      await _payments.saveActive(payment);
+      if (payment.status == 'confirmed') {
+        await _payments.clearActive();
+        _pollTimer?.cancel();
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => OrderTrackingScreen(orderId: widget.orderId),
+            ),
+          );
         }
+        return;
+      }
 
-        if (paymentStatus == 'failed') {
-          _pollTimer?.cancel();
-          if (mounted) {
-            final shouldRetry = await Navigator.of(context, rootNavigator: true).push<bool>(
-              MaterialPageRoute(
-                builder: (_) => PaymentResultScreen(
-                  isSuccess: false,
-                  title: 'Payment failed',
-                  message: 'Your payment could not be completed. Please ensure you have sufficient funds and try again.',
-                  onRetry: () => Navigator.pop(context, true),
-                  onGoHome: () => Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const CustomerShell()),
-                    (route) => false,
+      if ([
+        'failed',
+        'expired',
+        'manual_review',
+        'overpaid',
+        'refund_required',
+      ].contains(payment.status)) {
+        _pollTimer?.cancel();
+        if (mounted) {
+          final shouldRetry = await Navigator.of(context, rootNavigator: true)
+              .push<bool>(
+                MaterialPageRoute(
+                  builder: (_) => PaymentResultScreen(
+                    isSuccess: false,
+                    title: payment.status == 'manual_review'
+                        ? 'Payment under review'
+                        : 'Payment ${payment.status}',
+                    message:
+                        payment.failureMessage ??
+                        'Payment status requires attention. You can refresh or retry when permitted.',
+                    onRetry: () => Navigator.pop(context, true),
+                    onGoHome: () => Navigator.of(context, rootNavigator: true)
+                        .pushAndRemoveUntil(
+                          MaterialPageRoute(
+                            builder: (_) => const CustomerShell(),
+                          ),
+                          (route) => false,
+                        ),
                   ),
                 ),
-              ),
-            );
+              );
 
-            if (shouldRetry == true && mounted) {
-              _showRetryDialog();
-            }
+          if (shouldRetry == true && mounted) {
+            _showRetryDialog();
           }
-          return;
         }
-
-        setState(() => _statusMessage = 'An M-Pesa STK push has been sent to your phone. Please enter your PIN to complete the payment.');
+        return;
       }
+
+      final wait = payment.nextPollAfterSeconds ?? 5;
+      setState(
+        () => _statusMessage =
+            'Payment is ${payment.status}. We will check again in ${wait}s.',
+      );
+      _pollTimer?.cancel();
+      _pollTimer = Timer(Duration(seconds: wait), _checkPaymentStatus);
     } catch (e) {
       if (mounted) {
-        setState(() => _statusMessage = 'We are still checking your payment status.');
+        setState(
+          () => _statusMessage = 'We are still checking your payment status.',
+        );
+        _pollTimer?.cancel();
+        _pollTimer = Timer(const Duration(seconds: 5), _checkPaymentStatus);
       }
     } finally {
       if (mounted) {
@@ -162,7 +214,10 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen> with Widget
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             onPressed: () {
               final phone = phoneController.text.trim();
@@ -179,10 +234,14 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen> with Widget
   Future<void> _performRealRetry({String? phone}) async {
     setState(() => _isChecking = true);
     try {
-      final response = await _apiClient.post('customer/orders/retry-payment/', data: {
-        'order_number': widget.orderNumber,
-        if (phone != null) 'mpesa_phone': phone,
-      });
+      final response = await _apiClient.post(
+        'customer/orders/retry-payment/',
+        idempotencyKey: '${DateTime.now().microsecondsSinceEpoch}-retry',
+        data: {
+          'order_number': widget.orderNumber,
+          if (phone != null) 'mpesa_phone': phone,
+        },
+      );
 
       if (response.statusCode == 200) {
         if (mounted) {
@@ -193,6 +252,7 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen> with Widget
               builder: (_) => PaymentPendingScreen(
                 orderId: widget.orderId,
                 orderNumber: widget.orderNumber,
+                paymentId: response.data['payment_id'],
                 checkoutRequestId: response.data['checkout_request_id'],
               ),
             ),
@@ -203,7 +263,9 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen> with Widget
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Retry failed: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Retry failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _isChecking = false);
@@ -211,35 +273,7 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen> with Widget
   }
 
   Future<void> _triggerManualStatusQuery() async {
-    setState(() => _isChecking = true);
-    try {
-      final response = await _apiClient.post('customer/orders/${widget.orderId}/mpesa-query/');
-      if (response.statusCode == 200) {
-        if (response.data['status'] == 'paid') {
-          _pollTimer?.cancel();
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => OrderTrackingScreen(orderId: widget.orderId)),
-            );
-          }
-          return;
-        }
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(response.data['message'] ?? 'Status updated.'))
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not reach Safaricom. Please wait a moment.'))
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isChecking = false);
-    }
+    await _checkPaymentStatus();
   }
 
   @override
@@ -262,25 +296,43 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen> with Widget
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12)],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 12,
+                  ),
+                ],
               ),
               child: Column(
                 children: [
-                  const Icon(Icons.phone_android_rounded, size: 56, color: AppTheme.accentColor),
+                  const Icon(
+                    Icons.phone_android_rounded,
+                    size: 56,
+                    color: AppTheme.accentColor,
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     'Order ${widget.orderNumber}',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     _statusMessage,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
+                    style: const TextStyle(
+                      color: Colors.black87,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   const SizedBox(height: 24),
                   if (_isChecking)
-                    const CircularProgressIndicator(color: AppTheme.primaryColor)
+                    const CircularProgressIndicator(
+                      color: AppTheme.primaryColor,
+                    )
                   else
                     const Text(
                       'Checking status...',
@@ -297,9 +349,17 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen> with Widget
                 onPressed: _isChecking ? null : _triggerManualStatusQuery,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.accentColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: const Text('STUCK? CHECK STATUS', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                child: const Text(
+                  'STUCK? CHECK STATUS',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -310,18 +370,30 @@ class _PaymentPendingScreenState extends State<PaymentPendingScreen> with Widget
                 onPressed: _isChecking ? null : _checkPaymentStatus,
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: AppTheme.primaryColor),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: const Text('REFRESH', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+                child: const Text(
+                  'REFRESH',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),
             TextButton(
-              onPressed: () => Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const CustomerShell()),
-                (route) => false,
+              onPressed: () =>
+                  Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const CustomerShell()),
+                    (route) => false,
+                  ),
+              child: const Text(
+                'Back to Home',
+                style: TextStyle(color: Colors.grey),
               ),
-              child: const Text('Back to Home', style: TextStyle(color: Colors.grey)),
             ),
           ],
         ),
