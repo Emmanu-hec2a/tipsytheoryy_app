@@ -59,8 +59,6 @@ class _CustomerShellState extends State<CustomerShell> with WidgetsBindingObserv
     _paymentRecoveryTimer?.cancel();  // 💳 Clean up payment recovery timer
     super.dispose();
   }
-    super.dispose();
-  }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
