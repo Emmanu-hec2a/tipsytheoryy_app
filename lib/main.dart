@@ -27,13 +27,13 @@ import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   try {
     await dotenv.load(fileName: ".env");
 
     // 🛡️ SECURITY: Manual Firebase Initialization
     // We initialize Firebase with explicit options in code.
-    // This allows us to disable the 'google-services' Gradle plugin, 
+    // This allows us to disable the 'google-services' Gradle plugin,
     // which prevents sensitive keys from leaking into 'resources.arsc' as plain text.
     await Firebase.initializeApp(
       options: FirebaseOptions(
@@ -77,7 +77,7 @@ class TipsyTheoryyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
-    
+
     return MaterialApp(
       title: 'TipsyTheoryy',
       debugShowCheckedModeBanner: false,
@@ -128,12 +128,13 @@ class _AuthWrapperState extends State<AuthWrapper> {
   Future<void> _initializeApp() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final userProvider = Provider.of<UserProvider>(context, listen: false);
-    
+
     await authProvider.checkAuth();
     if (authProvider.status == AuthStatus.authenticated) {
       await userProvider.fetchProfile();
+      // 💳 Payment recovery is now handled in CustomerShell, not here
     }
-    
+
     if (mounted) {
       setState(() => _initialized = true);
     }
@@ -150,11 +151,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
     }
 
     final authProvider = Provider.of<AuthProvider>(context);
-    
+
     if (authProvider.status == AuthStatus.authenticated) {
       if (authProvider.role == 'rider') {
         return const RiderShell();
       } else if (authProvider.role == 'customer') {
+        // 💳 Always show home screen first, payment recovery overlay shows after 3s
         return const CustomerShell();
       } else {
         // Role is loading or missing - show loading

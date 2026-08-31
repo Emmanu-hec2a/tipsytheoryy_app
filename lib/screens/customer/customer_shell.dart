@@ -6,6 +6,9 @@ import 'home_screen.dart';
 import 'stores_list_screen.dart';
 import 'orders_screen.dart';
 import 'profile_screen.dart';
+import 'payment_pending_screen.dart';
+import '../../services/payment_repository.dart';
+import '../../models/payment_attempt_model.dart';
 import 'dart:async';
 import 'dart:math';
 import 'package:sensors_plus/sensors_plus.dart';
@@ -28,7 +31,11 @@ class _CustomerShellState extends State<CustomerShell> with WidgetsBindingObserv
   StreamSubscription? _notificationTapSubscription;
   DateTime _lastSafetyNotice = DateTime.now().subtract(const Duration(minutes: 5));
   
-  // 🛡️ Pro-Tier Safety Logic
+  // � Payment Recovery State (shows overlay after 3s if on home)
+  Timer? _paymentRecoveryTimer;
+  bool _paymentRecoveryShown = false;
+  
+  // �🛡️ Pro-Tier Safety Logic
   static const double _walkingThreshold = 1.8; // User acceleration (m/s²)
   int _sustainedMotionCount = 0;
   static const int _requiredSustainedEvents = 6; // ~3 seconds of continuous motion
@@ -40,6 +47,7 @@ class _CustomerShellState extends State<CustomerShell> with WidgetsBindingObserv
     WidgetsBinding.instance.addObserver(this);
     _initSafetyDetection();
     _initNotificationDeepLinking();
+    _schedulePaymentRecoveryCheck();  // 💳 Check for pending payments after 3s
   }
 
   @override
@@ -48,6 +56,9 @@ class _CustomerShellState extends State<CustomerShell> with WidgetsBindingObserv
     WidgetsBinding.instance.removeObserver(this);
     _userAccelerometerSubscription?.cancel();
     _notificationTapSubscription?.cancel();
+    _paymentRecoveryTimer?.cancel();  // 💳 Clean up payment recovery timer
+    super.dispose();
+  }
     super.dispose();
   }
 
@@ -158,8 +169,73 @@ class _CustomerShellState extends State<CustomerShell> with WidgetsBindingObserv
     });
   }
 
+  // 💳 Payment Recovery: Show overlay after 3s if user stays on home screen
+  void _schedulePaymentRecoveryCheck() {
+    _paymentRecoveryTimer = Timer(const Duration(seconds: 3), () async {
+      if (!mounted || _paymentRecoveryShown) return;
+      
+      // Only show if user is still on home screen (index 0)
+      if (_selectedIndex != 0) return;
+      
+      try {
+        final activePayment = await PaymentRepository().loadActive();
+        if (activePayment != null && 
+            activePayment.status != 'confirmed' && 
+            mounted && 
+            _selectedIndex == 0) {  // Double-check still on home
+          _showPaymentRecoverySheet(activePayment);
+        }
+      } catch (e) {
+        debugPrint('Payment recovery check failed: $e');
+        // Silently fail - user can still use app normally
+      }
+    });
+  }
+
+  void _showPaymentRecoverySheet(PaymentAttemptModel payment) {
+    if (_paymentRecoveryShown) return;
+    _paymentRecoveryShown = true;
+    
+    showModalBottomSheet(
+      context: context,
+      isDismissible: true,
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) => Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: PaymentPendingScreen(
+            orderId: payment.orderId ?? -1,
+            orderNumber: payment.orderNumber ?? 'Pending',
+            paymentId: payment.paymentId,
+            checkoutRequestId: payment.checkoutRequestId,
+          ),
+        ),
+      ),
+    ).then((_) {
+      // Reset flag when sheet is dismissed
+      if (mounted) {
+        setState(() => _paymentRecoveryShown = false);
+      }
+    });
+  }
+
   void _onTabTap(int index) {
     if (_selectedIndex == index) return;
+    // Cancel payment recovery timer if user navigates away from home
+    if (index != 0) {
+      _paymentRecoveryTimer?.cancel();
+    }
     setState(() => _selectedIndex = index);
     _pageController.animateToPage(
       index,
