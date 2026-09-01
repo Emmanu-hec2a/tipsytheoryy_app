@@ -57,8 +57,30 @@ class _SignupScreenState extends State<SignupScreen> {
     super.dispose();
   }
 
+  String _normalizePhone(String val) {
+    // Remove all non-digits
+    String digits = val.replaceAll(RegExp(r'\D'), '');
+    // If it starts with 254, remove it
+    if (digits.startsWith('254')) {
+      digits = digits.substring(3);
+    }
+    // If it starts with 0, remove only the first 0
+    if (digits.startsWith('0')) {
+      digits = digits.substring(1);
+    }
+    return digits;
+  }
+
   Future<void> _handleSignup() async {
     if (!_formKey.currentState!.validate()) return;
+    
+    final normalizedPhone = _normalizePhone(_phoneController.text);
+    if (normalizedPhone.length != 9) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid 9-digit phone number')),
+      );
+      return;
+    }
     
     if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -72,7 +94,7 @@ class _SignupScreenState extends State<SignupScreen> {
       email: _emailController.text.trim(),
       password: _passwordController.text,
       fullName: _nameController.text.trim(),
-      phone: _phoneController.text.trim(),
+      phone: normalizedPhone,
       role: widget.role,
       dob: _selectedDob?.toIso8601String().split('T')[0],
       metadata: {
@@ -202,7 +224,13 @@ class _SignupScreenState extends State<SignupScreen> {
                           child: Text('+254', style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white70 : Colors.black)),
                         ),
                       ),
-                      validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                      validator: (val) {
+                        if (val == null || val.isEmpty) return 'Required';
+                        final normalized = _normalizePhone(val);
+                        if (normalized.length != 9) return 'Must be 9 digits (excluding 0)';
+                        if (!RegExp(r'^[17]').hasMatch(normalized)) return 'Must start with 7 or 1';
+                        return null;
+                      },
                     ),
                     
                     const SizedBox(height: 12),

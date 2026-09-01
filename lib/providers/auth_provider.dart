@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -70,7 +71,11 @@ class AuthProvider with ChangeNotifier {
         return true;
       }
     } catch (e) {
-      _errorMessage = "Login failed. Please check your credentials.";
+      if (e is DioException && e.response?.data != null) {
+        _errorMessage = e.response?.data['error'] ?? "Login failed. Please check your credentials.";
+      } else {
+        _errorMessage = "Login failed. Please check your credentials.";
+      }
     }
 
     _status = AuthStatus.failed;
@@ -109,7 +114,11 @@ class AuthProvider with ChangeNotifier {
         return true;
       }
     } catch (e) {
-      _errorMessage = "Signup failed. Please try again.";
+      if (e is DioException && e.response?.data != null) {
+        _errorMessage = e.response?.data['error'] ?? "Signup failed. Please try again.";
+      } else {
+        _errorMessage = "Signup failed. Please try again.";
+      }
       print("Signup error: $e");
     }
 
@@ -143,10 +152,14 @@ class AuthProvider with ChangeNotifier {
       final String? idToken = await userCredential.user?.getIdToken();
 
       if (idToken != null) {
+        debugPrint("Google Auth: Got Firebase ID token, authenticating with backend...");
         return await _socialAuthenticateWithBackend(idToken);
+      } else {
+        _errorMessage = "Failed to get Firebase ID token.";
+        debugPrint("Google Auth Error: No ID token received");
       }
     } catch (e) {
-      _errorMessage = "Google sign-in failed. Please try again.";
+      _errorMessage = "Google sign-in failed: $e";
       debugPrint("Google Auth Error: $e");
     }
 
@@ -197,6 +210,7 @@ class AuthProvider with ChangeNotifier {
 
       if (response.statusCode == 200) {
         final data = response.data;
+        debugPrint("Backend Social Auth: Success - ${data.toString()}");
         
         if (data['requires_phone_setup'] == true) {
           // Temporarily save tokens but flag that we need phone linking
@@ -206,9 +220,17 @@ class AuthProvider with ChangeNotifier {
 
         await _saveAuthData(data);
         return true;
+      } else {
+        _errorMessage = "Backend returned status ${response.statusCode}: ${response.data['error'] ?? 'Unknown error'}";
+        debugPrint("Backend Social Auth Error: $response");
+        return false;
       }
     } catch (e) {
-      _errorMessage = "Social authentication failed on server.";
+      if (e is DioException && e.response?.data != null) {
+        _errorMessage = e.response?.data['error'] ?? "Server error occurred";
+      } else {
+        _errorMessage = "Social authentication failed: $e";
+      }
       debugPrint("Backend Social Auth Error: $e");
     }
     return false;

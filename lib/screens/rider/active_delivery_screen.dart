@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import '../../core/theme.dart';
 import '../../providers/rider_provider.dart';
 import '../../models/order_model.dart';
+import '../../services/map_service.dart';
 import '../customer/chat_screen.dart';
 import 'delivery_complete_screen.dart';
 
@@ -24,6 +25,7 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> with Automa
   @override
   bool get wantKeepAlive => true;
   GoogleMapController? _mapController;
+  final MapService _mapService = MapService();
   Position? _currentRiderPosition;
   List<LatLng> _polylinePoints = [];
   StreamSubscription<Position>? _positionStream;
@@ -98,27 +100,30 @@ class _ActiveDeliveryScreenState extends State<ActiveDeliveryScreen> with Automa
     final order = riderProvider.activeOrder;
     if (order == null || _currentRiderPosition == null) return;
 
+    // 🛡️ Logic Check: Destination depends on delivery phase
+    // 'assigned' = Heading to Store
+    // 'picked_up' or 'arrived' = Heading to Customer
     final bool isHeadingToPickup = order.status.toLowerCase() == 'assigned';
     final double destLat = isHeadingToPickup ? (order.storeLatitude ?? 0) : (order.latitude ?? 0);
     final double destLng = isHeadingToPickup ? (order.storeLongitude ?? 0) : (order.longitude ?? 0);
 
-    if (destLat == 0) return;
+    if (destLat == 0 || destLat < -90 || destLat > 90) {
+      debugPrint("📍 Navigation: Destination coordinates are invalid ($destLat, $destLng)");
+      return;
+    }
 
-    final url = "https://router.project-osrm.org/route/v1/driving/${_currentRiderPosition!.longitude},${_currentRiderPosition!.latitude};$destLng,$destLat?geometries=geojson";
-    
     try {
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['routes'] != null && data['routes'].isNotEmpty) {
-          final List coords = data['routes'][0]['geometry']['coordinates'];
-          setState(() {
-            _polylinePoints = coords.map((c) => LatLng(c[1], c[0])).toList();
-          });
-        }
+      final points = await _mapService.getRoutePolylines(
+        LatLng(_currentRiderPosition!.latitude, _currentRiderPosition!.longitude),
+        LatLng(destLat, destLng),
+      );
+      if (mounted && points.isNotEmpty) {
+        setState(() {
+          _polylinePoints = points;
+        });
       }
     } catch (e) {
-      debugPrint("Error fetching route: $e");
+      debugPrint("Error fetching route from MapService: $e");
     }
   }
 

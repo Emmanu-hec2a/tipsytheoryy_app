@@ -6,11 +6,12 @@
 // tree, read text, and verify that the values of widget properties are correct.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tipsytheoryy_app/main.dart';
+import 'package:flutter/material.dart';
+import '../lib/screens/landing/landing_screen.dart';
 
 void main() {
   testWidgets('landing screen shows primary sign-up options', (WidgetTester tester) async {
-    await tester.pumpWidget(const TipsyTheoryyApp());
+    await tester.pumpWidget(const MaterialApp(home: LandingScreen()));
 
     expect(find.text('Premium Liquor Delivered Fast'), findsOneWidget);
     expect(find.text('Sign Up as Customer'), findsOneWidget);

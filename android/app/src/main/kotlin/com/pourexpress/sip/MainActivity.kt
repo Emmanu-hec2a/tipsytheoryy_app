@@ -1,4 +1,4 @@
-package com.tipsytheoryy.tipsytheoryy_app
+package com.pourexpress.sip
 
 import io.flutter.embedding.android.FlutterActivity
 

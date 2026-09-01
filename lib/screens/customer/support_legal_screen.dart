@@ -56,7 +56,7 @@ class SupportLegalScreen extends StatelessWidget {
               }),
             ]),
             const SizedBox(height: 40),
-            const Text('App Version 1.0.0 (Production)', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
+            const Text('App Version 1.0.0 (Alpha)', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
             const SizedBox(height: 40),
           ],
         ),
@@ -113,7 +113,7 @@ class SupportLegalScreen extends StatelessWidget {
 
   void _launchWhatsApp() async {
     // 🛡️ Optimized for both WhatsApp and WhatsApp Business
-    final Uri url = Uri.parse("https://wa.me/254718258821?text=Hello%20TipsyTheoryy%20Support");
+    final Uri url = Uri.parse("https://wa.me/254718258821?text=Hello!%20TipsyTheoryy%20Support");
     _launchUrl(url);
   }
 

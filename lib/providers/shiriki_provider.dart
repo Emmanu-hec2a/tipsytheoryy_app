@@ -71,7 +71,11 @@ class ShirikiProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _apiClient.get('customer/shiriki/session/$inviteCode/');
+      // 🛡️ NO CACHE: Ensure we see real-time pot progress
+      final response = await _apiClient.get(
+        'customer/shiriki/session/$inviteCode/',
+        noCache: true,
+      );
       if (response.statusCode == 200) {
         _currentSession = ShirikiSessionModel.fromJson(response.data);
         if (_currentSession?.status == 'active') {

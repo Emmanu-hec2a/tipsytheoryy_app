@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../../core/api_client.dart';
 import '../../core/theme.dart';
 import '../../models/order_model.dart';
+import '../../services/map_service.dart';
 import 'package:shimmer/shimmer.dart';
 import 'chat_screen.dart';
 
@@ -20,6 +21,7 @@ class OrderTrackingScreen extends StatefulWidget {
 
 class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   final ApiClient _apiClient = ApiClient();
+  final MapService _mapService = MapService();
   OrderModel? _order;
   bool _isLoading = true;
   String? _errorMessage;
@@ -271,21 +273,15 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
 
     if (riderPos == null || customerPos == null) return;
 
-    final url = "https://router.project-osrm.org/route/v1/driving/${riderPos.longitude},${riderPos.latitude};${customerPos.longitude},${customerPos.latitude}?geometries=geojson";
-    
     try {
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['routes'] != null && data['routes'].isNotEmpty) {
-          final List coords = data['routes'][0]['geometry']['coordinates'];
-          setState(() {
-            _polylinePoints = coords.map((c) => LatLng(c[1], c[0])).toList();
-          });
-        }
+      final points = await _mapService.getRoutePolylines(riderPos, customerPos);
+      if (mounted) {
+        setState(() {
+          _polylinePoints = points;
+        });
       }
     } catch (e) {
-      debugPrint("Error fetching customer route: $e");
+      debugPrint("Error fetching route from MapService: $e");
     }
   }
 

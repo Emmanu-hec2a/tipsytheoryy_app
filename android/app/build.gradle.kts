@@ -1,12 +1,18 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
-    // id("com.google.gms.google-services") // 🛡️ SECURITY: Disabled auto-resource injection
+}
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.projectDir.resolve("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(keystorePropertiesFile.inputStream())
 }
 
 android {
-    namespace = "com.tipsytheoryy.tipsytheoryy_app"
+    namespace = "com.pourexpress.sip"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -16,32 +22,34 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    signingConfigs {
+        create("release") {
+            keyAlias = keystoreProperties["keyAlias"] as String
+            keyPassword = keystoreProperties["keyPassword"] as String
+            storeFile = keystoreProperties["storeFile"]?.let { file(it) }
+            storePassword = keystoreProperties["storePassword"] as String
+        }
+    }
+
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.tipsytheoryy.tipsytheoryy_app"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        applicationId = "com.pourexpress.sip"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
-        // 🛡️ SECURITY: Inject Keys via Manifest Placeholders
-        // This prevents keys from being stored in the resources.arsc table
         manifestPlaceholders["MAPS_API_KEY"] = "AIzaSyAMaTGu9r9qQUnqPVHKDgdDHX6dvu0p5lM"
     }
 
     buildTypes {
         release {
-            // 🛡️ SECURITY: Enable Code Obfuscation and Shrinking
-            // Prevents reverse-engineering and reduces APK size.
             isMinifyEnabled = true
-            isShrinkResources = true
+            isShrinkResources = false 
+            
+            // 🛡️ AAB HARDENING: Ensure the bundle tool doesn't strip security configs
+            // during the final transformation by Google Play.
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }

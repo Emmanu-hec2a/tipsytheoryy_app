@@ -134,11 +134,21 @@ class ProductProvider with ChangeNotifier {
   }
 
   Future<void> fetchHomeData({double? lat, double? lng, int? limit}) async {
-    // 🛡️ Guard: Only fetch if the user is a customer
+    // 🛡️ REPAIR: We check for the token to ensure we are authenticated.
+    final token = await _storage.read(key: 'access_token');
     final role = await _storage.read(key: 'role');
-    if (role != 'customer') return;
+    
+    if (token == null) return;
 
-    _isLoading = true; 
+    // 🛡️ ROLE GUARD: Ensure we only fetch customer data if the user is a customer.
+    // In release mode, if role is null for a split second, we log it and retry 
+    // rather than failing silently.
+    if (role != null && role != 'customer') {
+      debugPrint("ℹ️ ProductProvider: User is a $role. Skipping customer data fetch.");
+      return;
+    }
+
+    debugPrint("🚀 ProductProvider: Starting Home Data Fetch...");
     _isFeaturedLoading = true;
     _isStoresLoading = true;
     _isCategoriesLoading = true;
@@ -146,6 +156,7 @@ class ProductProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      debugPrint("🛰️ API Call: customer/products/?is_featured=true");
       // 🚀 Parallel Execution: Fetch all home data concurrently for speed
       final results = await Future.wait([
         _apiClient.get('customer/products/?is_featured=true'),
@@ -182,9 +193,15 @@ class ProductProvider with ChangeNotifier {
         _cacheData('cached_categories', _categories);
       }
       _isCategoriesLoading = false;
+      debugPrint("✅ Home Data Fetch COMPLETE");
 
     } catch (e) {
-      debugPrint("Home Data Fetch Error: $e");
+      debugPrint("🚨 Home Data Fetch Error: $e");
+      if (e is DioException) {
+        debugPrint("🚨 Dio Error Type: ${e.type}");
+        debugPrint("🚨 Dio Response: ${e.response?.data}");
+        debugPrint("🚨 Dio Status: ${e.response?.statusCode}");
+      }
       _error = "Failed to update home data. Check your connection.";
       _isFeaturedLoading = false;
       _isStoresLoading = false;

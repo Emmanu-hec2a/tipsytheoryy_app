@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
@@ -19,7 +20,8 @@ class OrdersScreen extends StatefulWidget {
   State<OrdersScreen> createState() => _OrdersScreenState();
 }
 
-class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClientMixin {
+class _OrdersScreenState extends State<OrdersScreen>
+    with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
 
@@ -45,18 +47,24 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
         backgroundColor: AppTheme.primaryColor,
         elevation: 0,
         centerTitle: true,
-        leading: widget.isStandalone ? IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ) : null,
+        leading: widget.isStandalone
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+              )
+            : null,
         title: const Text(
           'My Orders',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w900,
+            fontSize: 18,
+          ),
         ),
         actions: [
           IconButton(
             onPressed: () => orderProvider.fetchOrders(),
-            icon: const Icon(Icons.refresh, color: Colors.white)
+            icon: const Icon(Icons.refresh, color: Colors.white),
           ),
         ],
       ),
@@ -88,7 +96,12 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 120), // 🛡️ Bottom padding to avoid navbar obstruction
+      padding: const EdgeInsets.fromLTRB(
+        20,
+        10,
+        20,
+        120,
+      ), // 🛡️ Bottom padding to avoid navbar obstruction
       physics: const BouncingScrollPhysics(),
       itemCount: orders.length,
       itemBuilder: (context, index) {
@@ -111,7 +124,11 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
                 color: AppTheme.accentColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.wifi_off_rounded, size: 48, color: AppTheme.accentColor),
+              child: const Icon(
+                Icons.wifi_off_rounded,
+                size: 48,
+                color: AppTheme.accentColor,
+              ),
             ),
             const SizedBox(height: 32),
             Text(
@@ -139,10 +156,15 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
                 onPressed: () => provider.fetchOrders(),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                child: const Text('RETRY CONNECTION', style: TextStyle(fontWeight: FontWeight.w900)),
+                child: const Text(
+                  'RETRY CONNECTION',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
               ),
             ),
           ],
@@ -166,18 +188,20 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                Icons.shopping_bag_outlined, 
-                size: 64, 
-                color: isDark ? Colors.white24 : Colors.grey.shade300
+                Icons.shopping_bag_outlined,
+                size: 64,
+                color: isDark ? Colors.white24 : Colors.grey.shade300,
               ),
             ),
             const SizedBox(height: 32),
             Text(
-              _selectedFilter == 'All' ? 'No orders yet' : 'No $_selectedFilter orders',
+              _selectedFilter == 'All'
+                  ? 'No orders yet'
+                  : 'No $_selectedFilter orders',
               style: TextStyle(
-                fontSize: 20, 
-                fontWeight: FontWeight.w900, 
-                color: isDark ? Colors.white : AppTheme.primaryColor
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+                color: isDark ? Colors.white : AppTheme.primaryColor,
               ),
             ),
             const SizedBox(height: 12),
@@ -185,9 +209,9 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
               'Your future refreshments will appear here once you place an order.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: isDark ? Colors.white38 : Colors.grey.shade500, 
+                color: isDark ? Colors.white38 : Colors.grey.shade500,
                 height: 1.5,
-                fontWeight: FontWeight.w600
+                fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 32),
@@ -202,15 +226,22 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
                       Navigator.of(context).pop();
                     } else {
                       // Navigate to the start of the app (Home Tab)
-                      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                      Navigator.of(
+                        context,
+                      ).pushNamedAndRemoveUntil('/', (route) => false);
                     }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
-                  child: const Text('START SHOPPING', style: TextStyle(fontWeight: FontWeight.w900)),
+                  child: const Text(
+                    'START SHOPPING',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
                 ),
               ),
           ],
@@ -220,7 +251,14 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
   }
 
   Widget _buildFilters() {
-    final filters = ['All', 'Pending', 'Assigned', 'Picked_up', 'Delivered', 'Cancelled'];
+    final filters = [
+      'All',
+      'Pending',
+      'Assigned',
+      'Picked_up',
+      'Delivered',
+      'Cancelled',
+    ];
 
     return Container(
       color: AppTheme.primaryColor,
@@ -233,7 +271,7 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
         itemBuilder: (context, index) {
           final f = filters[index];
           final isSelected = _selectedFilter == f;
-          
+
           return GestureDetector(
             onTap: () => setState(() => _selectedFilter = f),
             child: AnimatedContainer(
@@ -242,8 +280,8 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
               decoration: BoxDecoration(
                 // 🟠 Selected: Bright Orange | Inactive: Matches Dark Surface for consistency
-                color: isSelected 
-                    ? AppTheme.accentColor 
+                color: isSelected
+                    ? AppTheme.accentColor
                     : Colors.white.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(100),
               ),
@@ -251,7 +289,9 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
                 child: Text(
                   f.replaceAll('_', ' ').toUpperCase(),
                   style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.5),
+                    color: isSelected
+                        ? Colors.white
+                        : Colors.white.withValues(alpha: 0.5),
                     fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
                     fontSize: 10,
                     letterSpacing: 0.5,
@@ -275,9 +315,15 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
       decoration: BoxDecoration(
         color: isDark ? Theme.of(context).cardColor : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: isDark ? [] : [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 6))
-        ],
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 15,
+                  offset: const Offset(0, 6),
+                ),
+              ],
       ),
       child: Column(
         children: [
@@ -287,21 +333,38 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: isDark ? Colors.white.withValues(alpha: 0.05) : AppTheme.primaryColor.withValues(alpha: 0.05),
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : AppTheme.primaryColor.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.liquor_rounded, color: isDark ? Colors.white : AppTheme.primaryColor, size: 20),
+                child: Icon(
+                  Icons.liquor_rounded,
+                  color: isDark ? Colors.white : AppTheme.primaryColor,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('#${order.orderNumber}', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: isDark ? Colors.white : AppTheme.primaryColor)),
+                    Text(
+                      '#${order.orderNumber}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 14,
+                        color: isDark ? Colors.white : AppTheme.primaryColor,
+                      ),
+                    ),
                     const SizedBox(height: 1),
                     Text(
                       order.addressString ?? 'Delivery Order',
-                      style: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 11, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: isDark ? Colors.white38 : Colors.grey.shade500,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -320,7 +383,10 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
           ),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Divider(height: 1, color: isDark ? Colors.white10 : Colors.grey.shade100),
+            child: Divider(
+              height: 1,
+              color: isDark ? Colors.white10 : Colors.grey.shade100,
+            ),
           ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -329,25 +395,39 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    DateFormat('MMM dd, yyyy • hh:mm a').format(order.createdAt),
-                    style: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 11, fontWeight: FontWeight.bold),
+                    DateFormat(
+                      'MMM dd, yyyy • hh:mm a',
+                    ).format(order.createdAt),
+                    style: TextStyle(
+                      color: isDark ? Colors.white38 : Colors.grey.shade500,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Row(
                     children: [
                       Icon(
-                        order.isShiriki ? Icons.people_alt_rounded : Icons.shopping_bag_outlined, 
-                        size: 12, 
-                        color: order.isShiriki ? AppTheme.accentColor : (isDark ? Colors.white24 : Colors.grey.shade400)
+                        order.isShiriki
+                            ? Icons.people_alt_rounded
+                            : Icons.shopping_bag_outlined,
+                        size: 12,
+                        color: order.isShiriki
+                            ? AppTheme.accentColor
+                            : (isDark ? Colors.white24 : Colors.grey.shade400),
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '${order.isShiriki ? "SHIRIKI • " : ""}${order.itemCount} items', 
+                        '${order.isShiriki ? "SHIRIKI • " : ""}${order.itemCount} items',
                         style: TextStyle(
-                          color: order.isShiriki ? AppTheme.accentColor : (isDark ? Colors.white38 : Colors.grey.shade500), 
-                          fontSize: 11, 
-                          fontWeight: FontWeight.bold
-                        )
+                          color: order.isShiriki
+                              ? AppTheme.accentColor
+                              : (isDark
+                                    ? Colors.white38
+                                    : Colors.grey.shade500),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -355,7 +435,11 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
               ),
               Text(
                 'KSh ${order.total.toStringAsFixed(0)}',
-                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: isDark ? Colors.white : AppTheme.primaryColor)
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                  color: isDark ? Colors.white : AppTheme.primaryColor,
+                ),
               ),
             ],
           ),
@@ -370,27 +454,56 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
                       onPressed: () => _retryPayment(order),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.accentColor,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         elevation: 0,
                       ),
-                      child: const Text('RETRY PAYMENT', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 0.5, color: Colors.white)),
+                      child: const Text(
+                        'RETRY PAYMENT',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 12,
+                          letterSpacing: 0.5,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
                 )
-              else if (['pending', 'confirmed', 'assigned', 'picked_up', 'arrived'].contains(order.status.toLowerCase()))
+              else if ([
+                'pending',
+                'confirmed',
+                'assigned',
+                'picked_up',
+                'arrived',
+              ].contains(order.status.toLowerCase()))
                 Expanded(
                   child: SizedBox(
                     height: 42,
                     child: ElevatedButton(
                       onPressed: () {
-                        Navigator.pushNamed(context, '/order-tracking', arguments: order.id);
+                        Navigator.pushNamed(
+                          context,
+                          '/order-tracking',
+                          arguments: order.id,
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primaryColor,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         elevation: 0,
                       ),
-                      child: const Text('TRACK ORDER', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 0.5)),
+                      child: const Text(
+                        'TRACK ORDER',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 12,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
                     ),
                   ),
                 )
@@ -402,10 +515,19 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
                       onPressed: () => _reorder(order),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primaryColor,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         elevation: 0,
                       ),
-                      child: const Text('REORDER', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 0.5)),
+                      child: const Text(
+                        'REORDER',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 12,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -414,12 +536,25 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
                 SizedBox(
                   height: 42,
                   child: OutlinedButton(
-                    onPressed: () => Navigator.pushNamed(context, '/rate-order', arguments: order.id),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    onPressed: () => Navigator.pushNamed(
+                      context,
+                      '/rate-order',
+                      arguments: order.id,
                     ),
-                    child: const Icon(Icons.star_outline_rounded, color: AppTheme.primaryColor, size: 20),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(
+                        color: AppTheme.primaryColor,
+                        width: 1.5,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.star_outline_rounded,
+                      color: AppTheme.primaryColor,
+                      size: 20,
+                    ),
                   ),
                 ),
               ],
@@ -432,16 +567,27 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
 
   Future<void> _reorder(OrderModel order) async {
     final cart = Provider.of<CartProvider>(context, listen: false);
-    
+
     if (cart.items.isNotEmpty) {
       final confirm = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Clear Cart?', style: TextStyle(fontWeight: FontWeight.bold)),
-          content: const Text('Reordering will clear your current cart. Continue?'),
+          title: const Text(
+            'Clear Cart?',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: const Text(
+            'Reordering will clear your current cart. Continue?',
+          ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('CANCEL')),
-            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('CONTINUE')),
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('CANCEL'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('CONTINUE'),
+            ),
           ],
         ),
       );
@@ -449,16 +595,20 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
     }
 
     // Convert Order items to Cart items
-    final newItems = order.items.map((it) => CartItem(
-      product: ProductModel(
-        id: it.productId,
-        name: it.productName,
-        price: it.priceAtOrder,
-        image: it.productImage,
-        storeId: it.storeId,
-      ),
-      quantity: it.quantity,
-    )).toList();
+    final newItems = order.items
+        .map(
+          (it) => CartItem(
+            product: ProductModel(
+              id: it.productId,
+              name: it.productName,
+              price: it.priceAtOrder,
+              image: it.productImage,
+              storeId: it.storeId,
+            ),
+            quantity: it.quantity,
+          ),
+        )
+        .toList();
 
     cart.reorder(
       newItems,
@@ -470,7 +620,10 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Items added to cart!'), backgroundColor: Colors.green)
+        const SnackBar(
+          content: Text('Items added to cart!'),
+          backgroundColor: Colors.green,
+        ),
       );
       Navigator.pushNamed(context, '/cart');
     }
@@ -479,9 +632,13 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
   Future<void> _retryPayment(OrderModel order) async {
     final apiClient = ApiClient();
     try {
-      final response = await apiClient.post('customer/orders/retry-payment/', data: {
-        'order_number': order.orderNumber,
-      });
+      final key =
+          '${DateTime.now().microsecondsSinceEpoch}-${Random().nextInt(1 << 32)}';
+      final response = await apiClient.post(
+        'customer/orders/retry-payment/',
+        idempotencyKey: key,
+        data: {'order_number': order.orderNumber},
+      );
 
       if (response.statusCode == 200) {
         if (mounted) {
@@ -491,17 +648,22 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
               builder: (_) => PaymentPendingScreen(
                 orderId: order.id,
                 orderNumber: order.orderNumber,
+                paymentId: response.data['payment_id'],
                 checkoutRequestId: response.data['checkout_request_id'],
               ),
             ),
           );
         }
       } else {
-        throw Exception(response.data['message'] ?? 'Failed to initiate payment');
+        throw Exception(
+          response.data['message'] ?? 'Failed to initiate payment',
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -509,13 +671,26 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
   Widget _buildStatusBadge(String status) {
     Color color;
     switch (status.toLowerCase()) {
-      case 'delivered': color = Colors.green; break;
-      case 'pending': color = Colors.orange; break;
-      case 'payment_pending': color = Colors.amber; break;
-      case 'assigned': color = Colors.blue; break;
-      case 'picked_up': color = Colors.purple; break;
-      case 'cancelled': color = Colors.red; break;
-      default: color = Colors.grey;
+      case 'delivered':
+        color = Colors.green;
+        break;
+      case 'pending':
+        color = Colors.orange;
+        break;
+      case 'payment_pending':
+        color = Colors.amber;
+        break;
+      case 'assigned':
+        color = Colors.blue;
+        break;
+      case 'picked_up':
+        color = Colors.purple;
+        break;
+      case 'cancelled':
+        color = Colors.red;
+        break;
+      default:
+        color = Colors.grey;
     }
 
     return Container(
@@ -526,7 +701,12 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
       ),
       child: Text(
         status.replaceAll('_', ' ').toUpperCase(),
-        style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+        style: TextStyle(
+          color: color,
+          fontSize: 9,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.5,
+        ),
       ),
     );
   }
@@ -560,7 +740,12 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
       ),
       child: Text(
         label,
-        style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+        style: TextStyle(
+          color: color,
+          fontSize: 9,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.5,
+        ),
       ),
     );
   }
@@ -573,11 +758,16 @@ class _OrdersScreenState extends State<OrdersScreen> with AutomaticKeepAliveClie
       itemCount: 4,
       itemBuilder: (_, __) => Shimmer.fromColors(
         baseColor: isDark ? AppTheme.darkShimmerBase : AppTheme.shimmerBase,
-        highlightColor: isDark ? AppTheme.darkShimmerHighlight : AppTheme.shimmerHighlight,
+        highlightColor: isDark
+            ? AppTheme.darkShimmerHighlight
+            : AppTheme.shimmerHighlight,
         child: Container(
           height: 220,
           margin: const EdgeInsets.only(bottom: 16),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
         ),
       ),
     );

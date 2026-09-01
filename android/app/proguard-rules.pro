@@ -1,40 +1,46 @@
-# 🛡️ SECURITY: ProGuard Configuration for TipsyTheoryy
-
-# Flutter Specifics
+# ── Flutter core ──────────────────────────────────────────────────────────────
 -keep class io.flutter.app.** { *; }
--keep class io.flutter.plugin.**  { *; }
--keep class io.flutter.util.**  { *; }
--keep class io.flutter.view.**  { *; }
--keep class io.flutter.**  { *; }
--keep class io.flutter.plugins.**  { *; }
+-keep class io.flutter.plugin.** { *; }
+-keep class io.flutter.util.** { *; }
+-keep class io.flutter.view.** { *; }
+-keep class io.flutter.** { *; }
+-keep class io.flutter.plugins.** { *; }
 
-# Prevent obfuscation of Firebase classes to avoid initialization errors
+# ── Firebase + Google Play Services ──────────────────────────────────────────
 -keep class com.google.firebase.** { *; }
+-keep class com.google.firebase.messaging.** { *; }
 -keep class com.google.android.gms.** { *; }
 
-# Google Maps
+# ── Google Maps ───────────────────────────────────────────────────────────────
 -keep class com.google.android.libraries.maps.** { *; }
 -keep class com.google.android.gms.maps.** { *; }
 
-# Pinput (Auth)
--keep class com.ib.pinput.** { *; }
+# ── flutter_secure_storage ────────────────────────────────────────────────────
+-keep class com.it_nomads.fluttersecurestorage.** { *; }
 
-# SSL Pinning Library
--keep class com.dieam.reactnativegooglesignin.** { *; }
--keep class com.http_certificate_pinning.** { *; }
+# ── Geolocator ────────────────────────────────────────────────────────────────
+-keep class com.baseflow.geolocator.** { *; }
 
-# 🛡️ FIX: Prevent Obfuscation of JSON Models
-# If models are obfuscated, the field names (e.g., "id", "name") change,
-# which breaks communication with the backend JSON.
--keep class com.tipsytheoryy.tipsytheoryy_app.models.** { *; }
--keepclassmembers class com.tipsytheoryy.tipsytheoryy_app.models.** { *; }
+# ── URL Launcher ──────────────────────────────────────────────────────────────
+-keep class io.flutter.plugins.urllauncher.** { *; }
 
-# 🛡️ FIX: Missing Play Core classes
-# Flutter's embedding references these classes for deferred components,
-# but they are often missing in standard builds.
+# ── App package (com.pourexpress.sip) ────────────────────────────────────────
+-keep class com.pourexpress.sip.** { *; }
+-keepclassmembers class com.pourexpress.sip.** {
+    <fields>;
+    <methods>;
+}
+
+# ── Play Core (suppress missing class warnings) ───────────────────────────────
 -dontwarn com.google.android.play.core.**
 
-# Maintain annotations
+# ── Remove these — React Native libraries, wrong ecosystem ───────────────────
+# -keep class com.dieam.reactnativegooglesignin.** { *; }   ← REMOVED
+# -keep class com.http_certificate_pinning.** { *; }         ← REMOVED
+# -keep class com.ib.pinput.** { *; }                        ← REMOVED (Dart widget)
+
+# ── Attributes ────────────────────────────────────────────────────────────────
 -keepattributes *Annotation*
 -keepattributes Signature
 -keepattributes EnclosingMethod
+-keepattributes InnerClasses

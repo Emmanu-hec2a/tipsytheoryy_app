@@ -7,6 +7,59 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:692162740094:android:7f4db01c680a3d826c3d2f",
+        "android_client_info": {
+          "package_name": "com.pourexpress.sip"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "692162740094-cq9f5fdokubac2mmttnpbndsb8hgtuuv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.pourexpress.sip",
+            "certificate_hash": "a0a9b8ec434687624a83a913f32a9a3cab3fe16a"
+          }
+        },
+        {
+          "client_id": "692162740094-m2igti1uc6ugu41aaef0idkctdm655di.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.pourexpress.sip",
+            "certificate_hash": "63b4d62414d630800067e486f7f90e1068fb8ab9"
+          }
+        },
+        {
+          "client_id": "692162740094-vvr7p6erhpkrgd2io1gbieahrg31vmut.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.pourexpress.sip",
+            "certificate_hash": "b5a3d02046fe30b03a154e58990ad1d4bd97fee0"
+          }
+        },
+        {
+          "client_id": "692162740094-jvhs5ntseb3eq662l28524qr6v7jm7p8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD6Dwv6qIwlEzjqfOY-mtIG5Mld6jo6M74"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "692162740094-jvhs5ntseb3eq662l28524qr6v7jm7p8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:692162740094:android:fb2dd801123a64866c3d2f",
         "android_client_info": {
           "package_name": "com.tipsytheoryy.tipsytheoryy_app"
