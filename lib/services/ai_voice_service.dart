@@ -40,17 +40,18 @@ class AIVoiceService {
     }
   }
 
-  Future<String> transcribe(String path) async {
+  Future<String?> transcribe(String path) async {
     try {
       FormData formData = FormData.fromMap({
         "file": await MultipartFile.fromFile(path, filename: "audio.m4a"),
       });
       
       final response = await _apiClient.post('ai/transcribe/', data: formData);
-      return response.data['text'] ?? "";
+      final text = (response.data['text'] as String?)?.trim();
+      return (text == null || text.isEmpty) ? null : text;
     } catch (e) {
       print("Transcription error: $e");
-      return "Error transcribing audio.";
+      return null;
     }
   }
 
@@ -71,9 +72,9 @@ class AIVoiceService {
     }
   }
 
-  Future<void> speak(String text) async {
+  Future<bool> speak(String text) async {
     try {
-      if (text.isEmpty) return;
+      if (text.isEmpty) return false;
 
       // 1. Get TTS URL from backend
       final response = await _apiClient.post('ai/speak/', data: {'text': text});
@@ -82,11 +83,13 @@ class AIVoiceService {
       if (audioUrl != null) {
         // 2. Play using URL
         await _audioPlayer.play(UrlSource(audioUrl));
-      } else {
-        print("TTS Error: No URL returned from backend");
+        return true;
       }
+      print("TTS Error: No URL returned from backend");
+      return false;
     } catch (e) {
       print("TTS Error in service: $e");
+      return false;
     }
   }
 

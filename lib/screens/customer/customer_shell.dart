@@ -261,7 +261,7 @@ class _CustomerShellState extends State<CustomerShell> with WidgetsBindingObserv
         },
         children: _screens,
       ),
-      // floatingActionButton: const TheoryAIFab(), // Temporarily hidden
+      floatingActionButton: const TheoryAIFab(),
       bottomNavigationBar: FloatingPillNavBar(
         selectedIndex: _selectedIndex,
         onTap: _onTabTap,

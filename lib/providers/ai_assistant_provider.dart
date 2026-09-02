@@ -54,6 +54,15 @@ class AIAssistantProvider with ChangeNotifier {
         final lng = locProvider.currentAddress?.longitude;
 
         final text = await _voiceService.transcribe(path);
+        if (text == null) {
+          // 🛡️ Don't feed a fake transcript into the AI chat call - surface
+          // a clear error instead so the user knows to retry speaking.
+          _aiResponseText = "Sorry, I didn't catch that. Try again?";
+          setState(VoiceState.error);
+          await Future.delayed(const Duration(seconds: 2));
+          setState(VoiceState.idle);
+          return;
+        }
         _lastTranscript = text;
         notifyListeners();
 
@@ -63,10 +72,11 @@ class AIAssistantProvider with ChangeNotifier {
         _lastActionData = response['action_data'];
         
         setState(VoiceState.speaking);
-        await _voiceService.speak(_aiResponseText);
+        final spoke = await _voiceService.speak(_aiResponseText);
         
-        // Return to idle after speaking (in production, detect when audio ends)
-        await Future.delayed(const Duration(seconds: 1));
+        // Keep the response bubble visible even if audio playback failed -
+        // the text itself is still useful feedback to the user.
+        await Future.delayed(Duration(seconds: spoke ? 1 : 2));
         
         if (_lastAction != null) {
           _executeAction(context);
@@ -77,6 +87,7 @@ class AIAssistantProvider with ChangeNotifier {
         setState(VoiceState.idle);
       }
     } catch (e) {
+      _aiResponseText = "";
       setState(VoiceState.error);
       Future.delayed(const Duration(seconds: 3), () => setState(VoiceState.idle));
     }

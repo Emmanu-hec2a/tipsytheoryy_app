@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../core/api_client.dart';
 import '../services/notification_service.dart';
@@ -135,7 +136,14 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      // 🛡️ Explicit Web client ID: required because the native
+      // 'google-services' Gradle plugin is intentionally disabled (see
+      // main.dart), so there's no auto-generated 'default_web_client_id'
+      // resource for this plugin to fall back on.
+      final googleSignIn = GoogleSignIn(
+        serverClientId: dotenv.env['GOOGLE_WEB_CLIENT_ID'],
+      );
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
       if (googleUser == null) {
         _status = AuthStatus.unauthenticated;
         notifyListeners();

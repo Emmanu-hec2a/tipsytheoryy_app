@@ -89,7 +89,11 @@ class _TheoryAIFabState extends State<TheoryAIFab> with SingleTickerProviderStat
       case VoiceState.listening: text = "Listening..."; break;
       case VoiceState.processing: text = "Thinking..."; break;
       case VoiceState.speaking: text = provider.aiResponseText; break;
-      case VoiceState.error: text = "Connection lost..."; break;
+      case VoiceState.error:
+        text = provider.aiResponseText.isNotEmpty
+            ? provider.aiResponseText
+            : "Connection lost...";
+        break;
       default: text = "";
     }
 

@@ -81,5 +81,7 @@
     <string>We need your location to show your delivery address and track your order live on the map.</string>
     <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
     <string>Riders need background location to update their position for live tracking even when the app is minimized.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Tipsy uses your microphone to let you place orders and search for products by voice.</string>
 </dict>
 </plist>
